@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useStore } from '@/store/useStore'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 export default function Header() {
@@ -10,6 +10,7 @@ export default function Header() {
   const [showAlerts, setShowAlerts] = useState(false)
   const unread = alerts.filter(a => !a.read).length
   const router = useRouter()
+  const pathname = usePathname()
 
   const handleLogout = async () => {
     try { const s = createClient(); await s.auth.signOut() } catch {}
@@ -52,6 +53,32 @@ export default function Header() {
             className="w-full bg-bg-secondary border border-border-primary h-8 px-3 text-[12px] font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-blue/50 transition-colors"
             style={{ '--tw-shadow': '0 0 0 2px rgba(59,130,246,0.1)' } as React.CSSProperties}
           />
+        </div>
+
+        {/* Nav links */}
+        <div className="hidden md:flex items-center gap-0 shrink-0">
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="h-8 px-3 text-[11px] font-mono transition-colors"
+            style={{
+              color: pathname === '/dashboard' ? '#E6EDF3' : '#6B7A90',
+              borderBottom: pathname === '/dashboard' ? '2px solid #3B82F6' : '2px solid transparent',
+              background: 'transparent',
+            }}
+          >
+            DASHBOARD
+          </button>
+          <button
+            onClick={() => router.push('/trade-finder')}
+            className="h-8 px-3 text-[11px] font-mono transition-colors"
+            style={{
+              color: pathname === '/trade-finder' ? '#E6EDF3' : '#6B7A90',
+              borderBottom: pathname === '/trade-finder' ? '2px solid #F97316' : '2px solid transparent',
+              background: 'transparent',
+            }}
+          >
+            TRADE FINDER
+          </button>
         </div>
 
         <div className="flex-1" />
