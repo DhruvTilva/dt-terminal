@@ -144,14 +144,14 @@ async function fetchYahoo(
 
 // ─── Strategy 1: Strict Morning Trend (9:15–10:00) ───────────────────────────
 // All consecutive 5-min candles must close higher (bullish) or lower (bearish)
-// across 5 consecutive trading days.
+// across 3 consecutive trading days (sliding window).
 
 function analyzeStrictMorningTrend(
   symbol: string, name: string, price: number, changePercent: number,
   days: DayGroup[]
 ): TradeSignal | null {
-  if (days.length < 5) return null
-  const recent = days.slice(-5)
+  if (days.length < 3) return null
+  const recent = days.slice(-3)
 
   const dayResults = recent.map(day => {
     const morning = windowCandles(day.candles, 9, 15, 10, 0)
@@ -168,7 +168,7 @@ function analyzeStrictMorningTrend(
   const bullCount = dayResults.filter(r => r === 'bullish').length
   const bearCount = dayResults.filter(r => r === 'bearish').length
 
-  if (bullCount === 5) {
+  if (bullCount === 3) {
     return {
       id: `strict_morning_bull_${symbol}`,
       symbol, stockName: name, price, changePercent,
@@ -176,13 +176,13 @@ function analyzeStrictMorningTrend(
       categoryLabel: 'Strict Morning Trend',
       direction: 'bullish',
       score: 92,
-      reason: `Stock moved UP between 9:15–10:00 for 5 consecutive days. Every 5-min candle closed higher than the previous candle throughout the morning window on each of those days — a textbook strict bullish opening pattern.`,
-      matchInfo: '5/5 days · strict bullish',
+      reason: `Stock moved UP between 9:15–10:00 for 3 consecutive days. Every 5-min candle closed higher than the previous candle throughout the morning window on each of those days — a textbook strict bullish opening pattern.`,
+      matchInfo: '3/3 days · strict bullish',
       detectedAt: new Date().toISOString(),
     }
   }
 
-  if (bearCount === 5) {
+  if (bearCount === 3) {
     return {
       id: `strict_morning_bear_${symbol}`,
       symbol, stockName: name, price, changePercent,
@@ -190,8 +190,8 @@ function analyzeStrictMorningTrend(
       categoryLabel: 'Strict Morning Trend',
       direction: 'bearish',
       score: 92,
-      reason: `Stock moved DOWN between 9:15–10:00 for 5 consecutive days. Every 5-min candle closed lower than the previous candle throughout the morning window on each of those days — a textbook strict bearish opening pattern.`,
-      matchInfo: '5/5 days · strict bearish',
+      reason: `Stock moved DOWN between 9:15–10:00 for 3 consecutive days. Every 5-min candle closed lower than the previous candle throughout the morning window on each of those days — a textbook strict bearish opening pattern.`,
+      matchInfo: '3/3 days · strict bearish',
       detectedAt: new Date().toISOString(),
     }
   }
@@ -201,14 +201,14 @@ function analyzeStrictMorningTrend(
 
 // ─── Strategy 2: General Morning Trend (9:15–10:00) ──────────────────────────
 // Net move from first open to last close in the window.
-// At least 5 out of last 7 days must show same direction.
+// At least 3 out of last 5 days must show same direction (sliding window).
 
 function analyzeGeneralMorningTrend(
   symbol: string, name: string, price: number, changePercent: number,
   days: DayGroup[]
 ): TradeSignal | null {
-  if (days.length < 5) return null
-  const recent = days.slice(-7)
+  if (days.length < 3) return null
+  const recent = days.slice(-5)
 
   const dayDirections: ('bullish' | 'bearish')[] = []
 
@@ -221,13 +221,13 @@ function analyzeGeneralMorningTrend(
     else if (lastClose < firstOpen) dayDirections.push('bearish')
   }
 
-  if (dayDirections.length < 5) return null
+  if (dayDirections.length < 3) return null
 
   const total = dayDirections.length
   const bullCount = dayDirections.filter(d => d === 'bullish').length
   const bearCount = dayDirections.filter(d => d === 'bearish').length
 
-  if (bullCount >= 5) {
+  if (bullCount >= 3) {
     return {
       id: `general_morning_bull_${symbol}`,
       symbol, stockName: name, price, changePercent,
@@ -241,7 +241,7 @@ function analyzeGeneralMorningTrend(
     }
   }
 
-  if (bearCount >= 5) {
+  if (bearCount >= 3) {
     return {
       id: `general_morning_bear_${symbol}`,
       symbol, stockName: name, price, changePercent,

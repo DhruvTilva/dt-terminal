@@ -7,7 +7,7 @@ import type { FullScanSegment } from '@/lib/full-scan-universe'
 const batchCache = new Map<string, { data: unknown; timestamp: number }>()
 const CACHE_TTL = 8 * 60 * 1000 // 8 minutes
 
-export const BATCH_SIZE = 15
+const BATCH_SIZE = 15
 
 export async function POST(req: NextRequest) {
   try {

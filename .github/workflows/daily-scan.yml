@@ -1,0 +1,44 @@
+name: Daily Market Scan
+
+on:
+  schedule:
+    # 4:30 PM IST = 11:00 UTC, Monday–Friday
+    - cron: '0 11 * * 1-5'
+  workflow_dispatch:
+    # Allow manual trigger from GitHub Actions tab
+    inputs:
+      force:
+        description: 'Force re-run even if today scan already completed'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  scan:
+    name: Run full NSE + BSE market scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 360  # 6 hours max (GitHub free tier allows this)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run daily market scan
+        run: |
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            npx tsx scripts/run-scan.ts --force
+          else
+            npx tsx scripts/run-scan.ts
+          fi
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
