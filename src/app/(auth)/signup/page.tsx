@@ -34,7 +34,13 @@ export default function SignupPage() {
     setLoading(true)
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.signUp({ email, password, options: { data: { name } } })
+      const { error } = await supabase.auth.signUp({
+        email, password,
+        options: {
+          data: { name },
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/api/auth/callback?type=signup`,
+        },
+      })
       if (error) setError(error.message)
       else setSuccess(true)
     } catch { setError('Connection failed. Please try again.') }

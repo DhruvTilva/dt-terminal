@@ -17,7 +17,7 @@ export default function ForgotPasswordPage() {
     setLoading(true)
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.resetPasswordForEmail(email)
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/api/auth/callback?type=recovery` })
       if (error) setError(error.message)
       else setSuccess(true)
     } catch { setError('Connection failed. Please try again.') }
@@ -82,7 +82,7 @@ export default function ForgotPasswordPage() {
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            placeholder="next.warren.buffet@gmail.com"
+            placeholder="yourmail@gmail.com"
             required
             className="auth-input"
           />
