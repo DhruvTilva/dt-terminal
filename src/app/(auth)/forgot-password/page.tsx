@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import AuthLayout from '@/components/auth/AuthLayout'
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState('')
-  const [error, setError] = useState('')
+  const [email, setEmail]     = useState('')
+  const [error, setError]     = useState('')
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -19,51 +20,89 @@ export default function ForgotPasswordPage() {
       const { error } = await supabase.auth.resetPasswordForEmail(email)
       if (error) setError(error.message)
       else setSuccess(true)
-    } catch { setError('Connection failed') }
+    } catch { setError('Connection failed. Please try again.') }
     finally { setLoading(false) }
   }
 
   if (success) {
     return (
-      <div className="min-h-screen bg-bg-primary flex items-center justify-center px-4">
-        <div className="text-center max-w-xs">
-          <h1 className="text-lg font-bold text-text-primary mb-2">Check your email</h1>
-          <p className="text-xs font-[family-name:var(--font-mono)] text-text-muted mb-4">Reset link sent to {email}</p>
-          <Link href="/login" className="text-xs font-[family-name:var(--font-mono)] text-blue hover:underline">← Back to login</Link>
+      <AuthLayout>
+        <div className="text-center py-6">
+          <div
+            className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-6"
+            style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+            </svg>
+          </div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: '#E6EDF3', marginBottom: 8 }}>Reset link sent</h1>
+          <p style={{ fontSize: 13, color: '#9FB0C0', lineHeight: 1.6, marginBottom: 24 }}>
+            Check your inbox at<br />
+            <span style={{ color: '#E6EDF3', fontWeight: 500 }}>{email}</span>
+          </p>
+          <Link href="/login" className="auth-btn-primary inline-block text-center">
+            Back to Sign In
+          </Link>
         </div>
-      </div>
+      </AuthLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-bg-primary flex items-center justify-center px-4">
-      <div className="w-full max-w-xs">
-        <div className="mb-8">
-          <h1 className="text-lg font-bold text-text-primary mb-0.5">Reset Password</h1>
-          <p className="text-xs font-[family-name:var(--font-mono)] text-text-muted">Enter your email</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-3">
-          {error && (
-            <div className="text-xs font-[family-name:var(--font-mono)] text-red bg-red-dim px-3 py-2 rounded">{error}</div>
-          )}
-
-          <div>
-            <label className="text-[10px] font-[family-name:var(--font-mono)] text-text-muted uppercase tracking-wider block mb-1">Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-bg-tertiary border border-border-primary rounded px-3 py-2 text-sm text-text-primary font-[family-name:var(--font-mono)] focus:outline-none focus:border-blue" required />
-          </div>
-
-          <button type="submit" disabled={loading}
-            className="w-full bg-blue text-white rounded py-2 text-sm font-[family-name:var(--font-mono)] font-medium hover:bg-blue/90 transition-colors disabled:opacity-50">
-            {loading ? 'SENDING...' : 'SEND RESET LINK'}
-          </button>
-        </form>
-
-        <p className="text-center text-xs font-[family-name:var(--font-mono)] text-text-muted mt-6">
-          <Link href="/login" className="text-blue hover:underline">← Back to login</Link>
+    <AuthLayout>
+      {/* Heading */}
+      <div className="mb-8">
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#E6EDF3', letterSpacing: '-0.3px', marginBottom: 6 }}>
+          Reset your password
+        </h1>
+        <p style={{ fontSize: 13, color: '#6B7A90' }}>
+          Enter your email and we&apos;ll send a reset link
         </p>
       </div>
-    </div>
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Error */}
+        {error && (
+          <div
+            className="flex items-start gap-2.5 rounded-lg px-4 py-3"
+            style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)' }}
+          >
+            <span style={{ color: '#F43F5E', fontSize: 13, marginTop: 1 }}>✕</span>
+            <span style={{ fontSize: 13, color: '#F43F5E', lineHeight: 1.5 }}>{error}</span>
+          </div>
+        )}
+
+        {/* Email */}
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 500, color: '#9FB0C0', display: 'block', marginBottom: 6 }}>
+            Email address
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="next.warren.buffet@gmail.com"
+            required
+            className="auth-input"
+          />
+        </div>
+
+        <button type="submit" disabled={loading} className="auth-btn-primary">
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="auth-spinner" />
+              Sending…
+            </span>
+          ) : 'Send Reset Link'}
+        </button>
+      </form>
+
+      <p className="text-center mt-8" style={{ fontSize: 13, color: '#6B7A90' }}>
+        <Link href="/login" style={{ color: '#3B82F6' }} className="hover:underline">
+          ← Back to Sign In
+        </Link>
+      </p>
+    </AuthLayout>
   )
 }

@@ -1,0 +1,110 @@
+import Link from 'next/link'
+
+export default function AuthLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-bg-primary flex" style={{ fontFamily: 'var(--font-sans)' }}>
+
+      {/* ── Left branding panel (hidden on mobile) ── */}
+      <div
+        className="hidden lg:flex lg:w-[360px] xl:w-[400px] flex-col justify-center p-10 shrink-0"
+        style={{
+          background: 'linear-gradient(160deg, #0F1A2E 0%, #0B1220 60%, #0D1829 100%)',
+          borderRight: '1px solid #263042',
+        }}
+      >
+        {/* Single content block — vertically centered, equal space top & bottom */}
+        <div className="flex flex-col gap-8" style={{ paddingTop: 32 }}>
+
+          {/* Brand */}
+          <div>
+            <Link href="/" className="flex items-center gap-2 mb-10">
+              <span className="w-2 h-2 rounded-full bg-green live-dot shrink-0" />
+              <span style={{ fontSize: 18, fontWeight: 800, color: '#E6EDF3', letterSpacing: '-0.3px' }}>
+                DT&apos;s <span style={{ color: '#3B82F6' }}>Terminal</span>
+              </span>
+            </Link>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: '#E6EDF3', lineHeight: 1.35, letterSpacing: '-0.3px', marginBottom: 10 }}>
+              Real-time Indian<br />Market Intelligence
+            </h2>
+            <p style={{ fontSize: 13, color: '#9FB0C0', lineHeight: 1.65 }}>
+              Live prices, smart news, and auto-detected trade signals — all in one terminal.
+            </p>
+          </div>
+
+          {/* Decorative chart SVG */}
+          <div className="opacity-25">
+            <svg viewBox="0 0 380 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
+              {[0, 30, 60, 90, 120].map(y => (
+                <line key={y} x1="0" y1={y} x2="380" y2={y} stroke="#263042" strokeWidth="1" />
+              ))}
+              <path
+                d="M0 90 L40 75 L80 80 L120 55 L160 60 L200 35 L240 45 L280 20 L320 30 L360 10 L380 15 L380 120 L0 120Z"
+                fill="url(#areaGrad)"
+                opacity="0.4"
+              />
+              <path
+                d="M0 90 L40 75 L80 80 L120 55 L160 60 L200 35 L240 45 L280 20 L320 30 L360 10 L380 15"
+                stroke="#3B82F6"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+              <path
+                d="M0 100 L40 88 L80 92 L120 72 L160 78 L200 58 L240 65 L280 45 L320 52 L360 35 L380 40"
+                stroke="#22C55E"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeDasharray="4 3"
+                fill="none"
+              />
+              <defs>
+                <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="#3B82F6" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+
+          {/* Feature list */}
+          <div className="space-y-3">
+            {[
+              { icon: '▲', color: '#22C55E', text: 'Live NSE & BSE prices, refreshed every 60s' },
+              { icon: '◈', color: '#3B82F6', text: 'Smart news scored by market impact' },
+              { icon: '⚡', color: '#F59E0B', text: 'Auto-detected breakouts & trade signals' },
+            ].map(f => (
+              <div key={f.text} className="flex items-start gap-3">
+                <span style={{ fontSize: 11, color: f.color, marginTop: 2, flexShrink: 0 }}>{f.icon}</span>
+                <span style={{ fontSize: 12, color: '#6B7A90', lineHeight: 1.5 }}>{f.text}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Exchange tags */}
+          <div style={{ fontSize: 11, color: '#354558', fontFamily: 'var(--font-mono)' }}>
+            NSE · BSE · NIFTY · SENSEX · BANKNIFTY
+          </div>
+
+        </div>
+      </div>
+
+      {/* ── Right form panel ── */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+        {/* Mobile-only logo */}
+        <Link href="/" className="flex lg:hidden items-center gap-2 mb-3">
+          <span className="w-2 h-2 rounded-full bg-green live-dot" />
+          <span style={{ fontSize: 20, fontWeight: 800, color: '#E6EDF3', letterSpacing: '-0.3px' }}>
+            DT&apos;s <span style={{ color: '#3B82F6' }}>Terminal</span>
+          </span>
+        </Link>
+
+        <div className="w-full max-w-sm">
+          {children}
+        </div>
+      </div>
+
+    </div>
+  )
+}

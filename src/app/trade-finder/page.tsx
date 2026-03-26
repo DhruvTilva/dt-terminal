@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
+import { createClient } from '@/lib/supabase/client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -183,12 +185,21 @@ function EmptyState({ scanAvailable }: { scanAvailable: boolean }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function TradeFinderPage() {
+  const router = useRouter()
   const [data, setData]           = useState<ResultsPayload | null>(null)
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('strict_morning')
   const [direction, setDirection] = useState<'all' | 'bullish' | 'bearish'>('all')
   const [expanded, setExpanded]   = useState<string | null>(null)
+
+  // Auth guard — redirect guests to login
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) router.replace('/login')
+    })
+  }, [router])
 
   const fetchResults = useCallback(async () => {
     setLoading(true)

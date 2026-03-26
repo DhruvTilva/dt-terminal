@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useStore } from '@/store/useStore'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -8,11 +8,55 @@ import { createClient } from '@/lib/supabase/client'
 export default function Header() {
   const { indices, stocks, alerts, searchQuery, setSearchQuery, markAlertRead, isRefreshing } = useStore()
   const [showAlerts, setShowAlerts] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const [userName, setUserName] = useState<string | null>(null)
+  const [isGuest, setIsGuest] = useState(false)       // true after auth check with no user
+  const [showTradeToast, setShowTradeToast] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement>(null)
   const unread = alerts.filter(a => !a.read).length
   const router = useRouter()
   const pathname = usePathname()
 
+  // Fetch current user name from profiles table
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(async (result: { data: { user: { id?: string; user_metadata?: { name?: string }; email?: string } | null } }) => {
+      const user = result.data.user
+      if (!user) { setIsGuest(true); return }
+      // Try profiles table first, fall back to user_metadata
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', user.id)
+        .single()
+      const name = profile?.name || user?.user_metadata?.name || user?.email?.split('@')[0] || null
+      setUserName(name)
+    })
+  }, [])
+
+  // Close user menu on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const handleTradeFinderClick = () => {
+    if (isGuest) {
+      setShowTradeToast(true)
+      setTimeout(() => setShowTradeToast(false), 2500)
+      setTimeout(() => router.push('/login'), 800)
+      return
+    }
+    router.push('/trade-finder')
+  }
+
   const handleLogout = async () => {
+    setShowUserMenu(false)
     try { const s = createClient(); await s.auth.signOut() } catch {}
     router.push('/login')
   }
@@ -34,7 +78,7 @@ export default function Header() {
         <div className="flex items-center gap-3 shrink-0">
           {/* Big live dot before brand name */}
           <span className="w-2.5 h-2.5 rounded-full live-dot shrink-0" style={{ background: '#22C55E' }} />
-          <div className="flex items-baseline gap-0" style={{ fontFamily: 'var(--font-sans)', fontSize: 18, fontWeight: 800, letterSpacing: '-0.3px' }}>
+          <div className="flex items-center gap-0" style={{ fontFamily: 'var(--font-sans)', fontSize: 18, fontWeight: 800, letterSpacing: '-0.3px' }}>
             <span style={{ color: '#E6EDF3' }}>DT&apos;s&nbsp;</span>
             <span style={{ color: '#3B82F6', fontWeight: 700 }}>Terminal</span>
           </div>
@@ -44,7 +88,7 @@ export default function Header() {
         <div className="hidden sm:block w-px h-5 bg-border-primary mx-1" />
 
         {/* Search */}
-        <div className="hidden sm:flex flex-1 max-w-md">
+        <div className="hidden sm:flex items-center flex-1 max-w-md">
           <input
             type="text"
             placeholder="Search stocks, news…"
@@ -59,7 +103,7 @@ export default function Header() {
         <div className="hidden md:flex items-center gap-2 shrink-0">
           <button
             onClick={() => router.push('/dashboard')}
-            className="h-8 px-4 text-[11px] font-mono transition-colors"
+            className="h-8 px-4 text-[11px] font-mono transition-colors flex items-center"
             style={{
               color: pathname === '/dashboard' ? '#E6EDF3' : '#6B7A90',
               borderBottom: pathname === '/dashboard' ? '2px solid #3B82F6' : '2px solid transparent',
@@ -69,15 +113,24 @@ export default function Header() {
             DASHBOARD
           </button>
           <button
-            onClick={() => router.push('/trade-finder')}
-            className="h-8 px-4 text-[11px] font-mono transition-colors"
+            onClick={handleTradeFinderClick}
+            className="h-8 px-4 text-[11px] font-mono transition-colors flex items-center gap-1.5"
             style={{
-              color: pathname === '/trade-finder' ? '#E6EDF3' : '#6B7A90',
-              borderBottom: pathname === '/trade-finder' ? '2px solid #F97316' : '2px solid transparent',
+              color: isGuest
+                ? 'rgba(107,122,144,0.65)'
+                : pathname === '/trade-finder' ? '#E6EDF3' : '#6B7A90',
+              borderBottom: (!isGuest && pathname === '/trade-finder') ? '2px solid #F97316' : '2px solid transparent',
               background: 'transparent',
+              opacity: isGuest ? 0.75 : 1,
             }}
           >
             TRADE FINDER
+            {isGuest && (
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            )}
           </button>
         </div>
 
@@ -99,7 +152,7 @@ export default function Header() {
         {/* Actions */}
         <div className="flex items-center gap-0.5 ml-1">
           {/* Alerts */}
-          <div className="relative">
+          <div className="relative flex items-center">
             <button
               onClick={() => setShowAlerts(v => !v)}
               className={`flex items-center gap-1.5 h-8 px-3 text-[11px] font-mono transition-colors ${showAlerts ? 'text-text-primary bg-bg-hover' : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'}`}
@@ -147,14 +200,81 @@ export default function Header() {
 
           <div className="w-px h-5 bg-border-primary mx-1" />
 
-          <button
-            onClick={handleLogout}
-            className="h-8 px-3 text-[11px] font-mono text-text-muted hover:text-red transition-colors"
-          >
-            EXIT
-          </button>
+          {/* User menu */}
+          <div className="relative flex items-center" ref={userMenuRef}>
+            {userName ? (
+              <button
+                onClick={() => setShowUserMenu(v => !v)}
+                className="flex items-center gap-2 h-8 px-3 text-[11px] font-mono text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors rounded"
+              >
+                <span
+                  className="flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold shrink-0"
+                  style={{ background: '#1E2E4A', color: '#3B82F6', border: '1px solid #263042' }}
+                >
+                  {userName.charAt(0).toUpperCase()}
+                </span>
+                <span className="hidden sm:block max-w-[80px] truncate">
+                  {userName}
+                </span>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            ) : (
+              <button
+                onClick={() => router.push('/login')}
+                className="h-8 px-3 text-[11px] font-mono text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors"
+              >
+                SIGN IN
+              </button>
+            )}
+
+            {showUserMenu && userName && (
+              <div className="absolute right-0 top-full mt-1 w-48 bg-bg-secondary border border-border-secondary rounded-lg z-50 animate-fade shadow-2xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-border-primary">
+                  <p className="text-[12px] text-text-primary font-medium truncate">Hi, {userName}</p>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2.5 text-[12px] font-mono text-text-muted hover:text-red hover:bg-bg-hover transition-colors flex items-center gap-2"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                  </svg>
+                  Sign Out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Trade Finder locked toast */}
+      {showTradeToast && (
+        <div
+          className="fixed z-[60] animate-fade"
+          style={{
+            top: 56,
+            right: 16,
+            background: '#1A2336',
+            border: '1px solid rgba(249,115,22,0.35)',
+            borderRadius: 8,
+            padding: '10px 14px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            maxWidth: 260,
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <p style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: '#F97316', lineHeight: 1.4 }}>
+              Login required to access Trade Finder
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── Ticker ── */}
       <div className="h-6 border-t border-border-primary bg-bg-primary overflow-hidden relative">

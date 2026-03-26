@@ -9,6 +9,7 @@ import OpportunityCard from '@/components/dashboard/OpportunityCard'
 import StockTable from '@/components/stocks/StockTable'
 import { useMarketData } from '@/hooks/useMarketData'
 import { useStore } from '@/store/useStore'
+import GuestLoginPopup from '@/components/ui/GuestLoginPopup'
 
 // ─── Status Bar ────────────────────────────────────────────────────────────
 // Isolated component so the 1-second countdown doesn't re-render the full page
@@ -112,6 +113,7 @@ export default function DashboardPage() {
       style={{ height: '100dvh', background: '#0B1220', overflow: 'hidden' }}
     >
       <Header />
+      <GuestLoginPopup />
 
       {/* ── 3-column layout — fills all remaining height ── */}
       <div className="flex flex-1 min-h-0">
