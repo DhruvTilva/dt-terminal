@@ -440,7 +440,9 @@ function analyzeLongTrend(
 }
 
 // ─── Strategy 5: High Volatility Morning Move (9:30–10:30) ───────────────────
-// High – Low in the window must be ≥50 points for all 3 of last 3 trading days.
+// % move = ((high - low) / open) * 100 must be ≥2.2% on all 3 of last 3 days.
+// Overextension filter: exclude if any day ≥4.5% (too extended, reversal risk).
+// Volume confirmation: morning volume ≥1.5x average morning volume.
 
 function analyzeHighVolatility(
   symbol: string, name: string, price: number, changePercent: number,
@@ -449,30 +451,54 @@ function analyzeHighVolatility(
   if (days.length < 3) return null
   const recent3 = days.slice(-3)
 
-  const ranges: number[] = []
+  const PCT_MIN = 2.2   // minimum % move to qualify
+  const PCT_MAX = 4.5   // overextension cutoff
+  const VOL_MULT = 1.5  // volume confirmation multiplier
+
+  const pctMoves: number[] = []
+  const volRatios: number[] = []
+
   for (const day of recent3) {
     const morning = windowCandles(day.candles, 9, 30, 10, 30)
-    if (morning.length < 3) return null // Not enough candles in window
+    if (morning.length < 3) return null
 
-    const high = Math.max(...morning.map(c => c.high))
-    const low = Math.min(...morning.map(c => c.low))
-    ranges.push(high - low)
+    const open  = morning[0].open
+    if (!open || open <= 0) return null
+
+    const high   = Math.max(...morning.map(c => c.high))
+    const low    = Math.min(...morning.map(c => c.low))
+    const pct    = ((high - low) / open) * 100
+    pctMoves.push(pct)
+
+    // Volume confirmation: morning avg vs full-day avg
+    const morningVol = morning.reduce((s, c) => s + (c.volume ?? 0), 0) / morning.length
+    const allVol     = day.candles.reduce((s, c) => s + (c.volume ?? 0), 0) / day.candles.length
+    volRatios.push(allVol > 0 ? morningVol / allVol : 0)
   }
 
-  if (!ranges.every(r => r >= 50)) return null
+  // All 3 days must be in the safe zone [2.2%, 4.5%)
+  if (!pctMoves.every(p => p >= PCT_MIN && p < PCT_MAX)) return null
 
-  const avgRange = ranges.reduce((a, b) => a + b, 0) / ranges.length
-  const minRange = Math.min(...ranges)
+  // At least 2 of 3 days must have volume confirmation
+  const volConfirmed = volRatios.filter(r => r >= VOL_MULT).length >= 2
+
+  const avgPct = pctMoves.reduce((a, b) => a + b, 0) / pctMoves.length
+  const direction = changePercent >= 0 ? 'bullish' : 'bearish'
+  const dayList   = pctMoves.map(p => `${p.toFixed(1)}%`).join(', ')
+
+  // Score: based on avg % move within safe range, volume adds bonus
+  const baseScore  = Math.min(88, 60 + Math.floor((avgPct - PCT_MIN) / (PCT_MAX - PCT_MIN) * 28))
+  const finalScore = volConfirmed ? Math.min(95, baseScore + 7) : baseScore
 
   return {
     id: `high_vol_${symbol}`,
     symbol, stockName: name, price, changePercent,
     strategyType: 'high_volatility',
     categoryLabel: 'High Volatility Move',
-    direction: changePercent >= 0 ? 'bullish' : 'bearish',
-    score: Math.min(95, 70 + Math.floor((avgRange - 50) / 10)),
-    reason: `Price moved ≥50 points between 9:30–10:30 on all 3 of the last 3 trading days. Average morning range was ${avgRange.toFixed(0)} points. Minimum range was ${minRange.toFixed(0)} points. This stock shows consistent high intraday volatility in the morning window — suitable for momentum and scalping strategies.`,
-    matchInfo: `3/3 days · avg ${avgRange.toFixed(0)} pts range`,
+    direction,
+    score: finalScore,
+    reason: `Avg ${avgPct.toFixed(1)}% move (${dayList}) between 9:30–10:30 on all 3 of the last 3 trading days. Overextension filter passed (all days <4.5%). ${volConfirmed ? 'Volume confirmed ≥1.5x average. ' : ''}Intraday Continuation Candidate — watch for breakout after 10:05 AM. Exit before 3:15 PM.`,
+    matchInfo: `Avg ${avgPct.toFixed(1)}% move (${dayList})${volConfirmed ? ' · Vol ✓' : ''}`,
     detectedAt: new Date().toISOString(),
   }
 }

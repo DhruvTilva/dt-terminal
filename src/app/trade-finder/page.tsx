@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import { createClient } from '@/lib/supabase/client'
@@ -47,6 +47,14 @@ const STRATEGIES = [
   { key: 'long_trend',      label: 'Long Trend',      color: '#22C55E' },
   { key: 'high_volatility', label: 'High Volatility', color: '#F97316' },
 ]
+
+const FILTER_EXPLAIN: Record<string, { title: string; desc: string }> = {
+  strict_morning:  { title: 'Strict Morning Trend',  desc: 'Every 9:15–10:00 candle moved in one direction for 3 straight days. The strongest, most reliable signal.' },
+  general_morning: { title: 'General Morning Trend', desc: 'Stock trended up or down in the morning on 3 of the last 5 days. Reliable, but softer than Strict Morning.' },
+  candle_pattern:  { title: 'Candle Signal',         desc: 'Latest candle is a Hammer, Shooting Star, or a strong green/red bar — hints at a reversal or continuation right now.' },
+  long_trend:      { title: 'Long Trend',            desc: '20-day MA is above/below 50-day MA for 1+ month = clean trend. Best for swing trades (hold days to weeks).' },
+  high_volatility: { title: 'High Volatility Move',  desc: 'Moved 2.2%–4.5% between 9:30–10:30 AM on all 3 recent days, with solid volume. Sweet spot for intraday scalping — not too slow, not overextended.' },
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -159,6 +167,99 @@ function ResultRow({
   )
 }
 
+function InfoPopup({ strategyKey, onClose }: { strategyKey: string; onClose: () => void }) {
+  const info = FILTER_EXPLAIN[strategyKey]
+  const overlayRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  if (!info) return null
+  const s = STRATEGIES.find(x => x.key === strategyKey)
+  const color = s?.color ?? '#3B82F6'
+
+  return (
+    <div
+      ref={overlayRef}
+      onClick={e => { if (e.target === overlayRef.current) onClose() }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(11,18,32,0.75)', backdropFilter: 'blur(3px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '16px',
+        animation: 'fadeIn 0.15s ease',
+      }}
+    >
+      <div style={{
+        background: '#121A2B',
+        border: `1px solid ${color}40`,
+        boxShadow: `0 0 32px ${color}18, 0 8px 40px rgba(0,0,0,0.5)`,
+        borderRadius: 14, padding: '24px', maxWidth: 380, width: '100%',
+        animation: 'scaleIn 0.15s ease',
+        position: 'relative',
+      }}>
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute', top: 12, right: 12,
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: '#6B7A90', fontSize: 16, lineHeight: 1,
+            padding: '4px 6px', borderRadius: 4,
+          }}
+          onMouseEnter={e => (e.currentTarget.style.color = '#E6EDF3')}
+          onMouseLeave={e => (e.currentTarget.style.color = '#6B7A90')}
+        >✕</button>
+
+        {/* Title */}
+        <div style={{
+          fontSize: 10, fontFamily: 'var(--font-mono)', letterSpacing: '0.1em',
+          textTransform: 'uppercase', color, marginBottom: 8,
+        }}>Filter Logic</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#E6EDF3', marginBottom: 14, paddingRight: 24 }}>
+          {info.title}
+        </div>
+
+        {/* Divider */}
+        <div style={{ height: 1, background: '#263042', marginBottom: 14 }} />
+
+        {/* Description */}
+        <p style={{ fontSize: 13, color: '#9FB0C0', lineHeight: 1.7, margin: 0 }}>
+          {info.desc}
+        </p>
+
+        {/* Entry hint for high volatility */}
+        {strategyKey === 'high_volatility' && (
+          <div style={{
+            marginTop: 14, padding: '8px 12px', borderRadius: 8,
+            background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)',
+            fontSize: 11, color: '#F97316', fontFamily: 'var(--font-mono)',
+          }}>
+            Watch for breakout after 10:05 AM · Exit before 3:15 PM
+          </div>
+        )}
+        {strategyKey === 'long_trend' && (
+          <div style={{
+            marginTop: 14, padding: '8px 12px', borderRadius: 8,
+            background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)',
+            fontSize: 11, color: '#22C55E', fontFamily: 'var(--font-mono)',
+          }}>
+            Stocks near 20-day MA = better entry · Avoid if &gt;10% extended
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+      `}</style>
+    </div>
+  )
+}
+
 function EmptyState({ scanAvailable }: { scanAvailable: boolean }) {
   return (
     <div style={{ padding: '48px 24px', textAlign: 'center' }}>
@@ -192,6 +293,7 @@ export default function TradeFinderPage() {
   const [activeTab, setActiveTab] = useState('strict_morning')
   const [direction, setDirection] = useState<'all' | 'bullish' | 'bearish'>('all')
   const [expanded, setExpanded]   = useState<string | null>(null)
+  const [infoOpen, setInfoOpen]   = useState<string | null>(null)
 
   // Auth guard — redirect guests to login
   useEffect(() => {
@@ -305,28 +407,46 @@ export default function TradeFinderPage() {
             const count = data?.results?.[s.key]?.length ?? 0
             const isActive = activeTab === s.key
             return (
-              <button
-                key={s.key}
-                onClick={() => { setActiveTab(s.key); setExpanded(null) }}
-                style={{
-                  padding: '8px 16px', fontSize: 12, fontWeight: 600,
-                  borderRadius: '6px 6px 0 0', border: 'none',
-                  background: isActive ? '#0B1220' : 'transparent',
-                  color: isActive ? s.color : '#6B7A90',
-                  cursor: 'pointer', whiteSpace: 'nowrap',
-                  borderBottom: isActive ? `2px solid ${s.color}` : '2px solid transparent',
-                }}
-              >
-                {s.label}
-                {count > 0 && (
-                  <span style={{
-                    marginLeft: 6, fontSize: 10, fontWeight: 700,
-                    color: isActive ? s.color : '#354558',
-                    background: isActive ? `${s.color}1A` : '#1A2336',
-                    borderRadius: 10, padding: '1px 6px',
-                  }}>{count}</span>
-                )}
-              </button>
+              <div key={s.key} style={{
+                display: 'flex', alignItems: 'center', position: 'relative',
+                borderBottom: isActive ? `2px solid ${s.color}` : '2px solid transparent',
+                borderRadius: '6px 6px 0 0',
+                background: isActive ? '#0B1220' : 'transparent',
+              }}>
+                <button
+                  onClick={() => { setActiveTab(s.key); setExpanded(null) }}
+                  style={{
+                    padding: '8px 4px 8px 16px', fontSize: 12, fontWeight: 600,
+                    border: 'none', background: 'transparent',
+                    color: isActive ? s.color : '#6B7A90',
+                    cursor: 'pointer', whiteSpace: 'nowrap',
+                    display: 'flex', alignItems: 'center', gap: 4,
+                  }}
+                >
+                  {s.label}
+                  {count > 0 && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 700,
+                      color: isActive ? s.color : '#354558',
+                      background: isActive ? `${s.color}1A` : '#1A2336',
+                      borderRadius: 10, padding: '1px 6px',
+                    }}>{count}</span>
+                  )}
+                </button>
+                {/* ⓘ Info button */}
+                <button
+                  onClick={e => { e.stopPropagation(); setInfoOpen(s.key) }}
+                  title="View filter logic"
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    padding: '4px 10px 4px 2px', fontSize: 12,
+                    color: infoOpen === s.key ? s.color : '#354558',
+                    lineHeight: 1, transition: 'color 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.color = s.color)}
+                  onMouseLeave={e => (e.currentTarget.style.color = infoOpen === s.key ? s.color : '#354558')}
+                >ⓘ</button>
+              </div>
             )
           })}
         </div>
@@ -401,6 +521,10 @@ export default function TradeFinderPage() {
           </>
         )}
       </div>
+
+      {/* ── Filter Explain Popup ────────────────────────────────────────────── */}
+      {infoOpen && <InfoPopup strategyKey={infoOpen} onClose={() => setInfoOpen(null)} />}
+
     </div>
   )
 }
