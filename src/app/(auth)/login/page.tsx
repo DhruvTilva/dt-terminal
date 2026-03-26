@@ -33,9 +33,23 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setError(error.message)
-      else { router.push('/dashboard'); router.refresh() }
+      const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) { setError(error.message); return }
+
+      // Check if user is blocked
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_blocked')
+        .eq('id', authData.user.id)
+        .single()
+
+      if (profile?.is_blocked) {
+        await supabase.auth.signOut()
+        setError('Your account has been suspended. Contact support for assistance.')
+        return
+      }
+
+      router.push('/dashboard'); router.refresh()
     } catch { setError('Connection failed. Please try again.') }
     finally { setLoading(false) }
   }
