@@ -33,8 +33,8 @@ export default function GuestLoginPopup() {
     let timer: ReturnType<typeof setTimeout>
 
     const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) return // Logged in, skip entirely
+    supabase.auth.getUser().then(({ data }: { data: { user: { id: string } | null } }) => {
+      if (data.user) return // Logged in, skip entirely
 
       // Guest user: start 60s countdown
       timer = setTimeout(() => {

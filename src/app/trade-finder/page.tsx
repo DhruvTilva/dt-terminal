@@ -196,8 +196,8 @@ export default function TradeFinderPage() {
   // Auth guard — redirect guests to login
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) router.replace('/login')
+    supabase.auth.getUser().then(({ data }: { data: { user: { id: string } | null } }) => {
+      if (!data.user) router.replace('/login')
     })
   }, [router])
 
