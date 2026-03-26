@@ -5,7 +5,6 @@ on:
     # 4:30 PM IST = 11:00 UTC, Monday–Friday
     - cron: '0 11 * * 1-5'
   workflow_dispatch:
-    # Allow manual trigger from GitHub Actions tab
     inputs:
       force:
         description: 'Force re-run even if today scan already completed'
@@ -17,7 +16,7 @@ jobs:
   scan:
     name: Run full NSE + BSE market scan
     runs-on: ubuntu-latest
-    timeout-minutes: 360  # 6 hours max (GitHub free tier allows this)
+    timeout-minutes: 360
 
     steps:
       - name: Checkout repository
@@ -32,13 +31,115 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Set scan metadata
+        id: meta
+        run: |
+          echo "scan_date=$(TZ='Asia/Kolkata' date '+%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "start_time=$(TZ='Asia/Kolkata' date '+%d %b %Y, %I:%M %p IST')" >> $GITHUB_OUTPUT
+
+      - name: Send start email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          to: ${{ secrets.MAIL_USERNAME }}
+          from: DT's Terminal <${{ secrets.MAIL_USERNAME }}>
+          subject: "🔄 DT's Terminal — Daily Scan Started (${{ steps.meta.outputs.scan_date }})"
+          body: |
+            DT's Terminal — Daily Market Scan
+
+            Status     : STARTED
+            Scan Date  : ${{ steps.meta.outputs.scan_date }}
+            Started At : ${{ steps.meta.outputs.start_time }}
+            Trigger    : ${{ github.event_name == 'workflow_dispatch' && 'Manual' || 'Scheduled (4:30 PM IST)' }}
+
+            Scanning NSE + BSE listed stocks...
+            You will receive another email when the scan completes.
+
+            — GitHub Actions
+
       - name: Run daily market scan
+        id: scan
         run: |
           if [ "${{ github.event.inputs.force }}" = "true" ]; then
-            npx tsx scripts/run-scan.ts --force
+            npx tsx scripts/run-scan.ts --force 2>&1 | tee /tmp/scan_output.txt
           else
-            npx tsx scripts/run-scan.ts
+            npx tsx scripts/run-scan.ts 2>&1 | tee /tmp/scan_output.txt
           fi
+          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: Extract scan stats
+        id: stats
+        if: always()
+        run: |
+          OUTPUT=$(cat /tmp/scan_output.txt 2>/dev/null || echo "No output")
+          # Extract key lines from scan output
+          STOCKS=$(echo "$OUTPUT" | grep -oP 'Stocks processed : \K[^\n]+' | tail -1 || echo "N/A")
+          SIGNALS=$(echo "$OUTPUT" | grep -oP 'Signals found    : \K[^\n]+' | tail -1 || echo "N/A")
+          ERRORS=$(echo "$OUTPUT" | grep -oP 'Errors           : \K[^\n]+' | tail -1 || echo "N/A")
+          DURATION=$(echo "$OUTPUT" | grep -oP 'Duration         : \K[^\n]+' | tail -1 || echo "N/A")
+          STATUS=$(echo "$OUTPUT" | grep -oP 'Status           : \K[^\n]+' | tail -1 || echo "N/A")
+          echo "stocks=$STOCKS" >> $GITHUB_OUTPUT
+          echo "signals=$SIGNALS" >> $GITHUB_OUTPUT
+          echo "errors=$ERRORS" >> $GITHUB_OUTPUT
+          echo "duration=$DURATION" >> $GITHUB_OUTPUT
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          echo "end_time=$(TZ='Asia/Kolkata' date '+%d %b %Y, %I:%M %p IST')" >> $GITHUB_OUTPUT
+
+      - name: Send completion email (success)
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          to: ${{ secrets.MAIL_USERNAME }}
+          from: DT's Terminal <${{ secrets.MAIL_USERNAME }}>
+          subject: "✅ DT's Terminal — Scan Completed (${{ steps.meta.outputs.scan_date }})"
+          body: |
+            DT's Terminal — Daily Market Scan
+
+            Status          : ✅ COMPLETED
+            Scan Date       : ${{ steps.meta.outputs.scan_date }}
+            Started At      : ${{ steps.meta.outputs.start_time }}
+            Finished At     : ${{ steps.stats.outputs.end_time }}
+
+            ── Results ──────────────────────────
+            Total Stocks    : ${{ steps.stats.outputs.stocks }}
+            Signals Found   : ${{ steps.stats.outputs.signals }}
+            Errors          : ${{ steps.stats.outputs.errors }}
+            Duration        : ${{ steps.stats.outputs.duration }}
+
+            Results are now live on Trade Finder.
+
+            — GitHub Actions
+
+      - name: Send completion email (failure)
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          to: ${{ secrets.MAIL_USERNAME }}
+          from: DT's Terminal <${{ secrets.MAIL_USERNAME }}>
+          subject: "❌ DT's Terminal — Scan FAILED (${{ steps.meta.outputs.scan_date }})"
+          body: |
+            DT's Terminal — Daily Market Scan
+
+            Status     : ❌ FAILED
+            Scan Date  : ${{ steps.meta.outputs.scan_date }}
+            Started At : ${{ steps.meta.outputs.start_time }}
+            Failed At  : ${{ steps.stats.outputs.end_time }}
+
+            Check GitHub Actions logs for details:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            — GitHub Actions

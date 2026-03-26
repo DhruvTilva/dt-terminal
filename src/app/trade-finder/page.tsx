@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Header from '@/components/layout/Header'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -220,24 +221,18 @@ export default function TradeFinderPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', background: '#0B1220' }}>
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      {/* ── Shared Header (brand + nav + ticker) ───────────────────────────── */}
+      <Header />
+
+      {/* ── Sub-header (filters + scan info + strategy tabs) ───────────────── */}
       <div style={{
         background: '#121A2B', borderBottom: '1px solid #263042',
-        padding: '14px 20px 0', flexShrink: 0,
+        padding: '10px 20px 0', flexShrink: 0,
       }}>
-        {/* Title row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 18, fontWeight: 800, color: '#E6EDF3', fontFamily: 'var(--font-sans)' }}>
-              Trade Finder
-            </span>
-            {data?.session && (
-              <span style={{
-                fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
-                color: '#22C55E', background: 'rgba(34,197,94,0.12)',
-                borderRadius: 4, padding: '3px 8px', textTransform: 'uppercase',
-              }}>Daily Scan</span>
-            )}
+        {/* Filters row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ fontSize: 11, color: '#6B7A90', fontFamily: 'var(--font-mono)' }}>
+            {data?.session ? 'Pre-computed daily scan results' : 'Awaiting first scan…'}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

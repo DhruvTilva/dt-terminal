@@ -56,10 +56,10 @@ export default function Header() {
         </div>
 
         {/* Nav links */}
-        <div className="hidden md:flex items-center gap-0 shrink-0">
+        <div className="hidden md:flex items-center gap-2 shrink-0">
           <button
             onClick={() => router.push('/dashboard')}
-            className="h-8 px-3 text-[11px] font-mono transition-colors"
+            className="h-8 px-4 text-[11px] font-mono transition-colors"
             style={{
               color: pathname === '/dashboard' ? '#E6EDF3' : '#6B7A90',
               borderBottom: pathname === '/dashboard' ? '2px solid #3B82F6' : '2px solid transparent',
@@ -70,7 +70,7 @@ export default function Header() {
           </button>
           <button
             onClick={() => router.push('/trade-finder')}
-            className="h-8 px-3 text-[11px] font-mono transition-colors"
+            className="h-8 px-4 text-[11px] font-mono transition-colors"
             style={{
               color: pathname === '/trade-finder' ? '#E6EDF3' : '#6B7A90',
               borderBottom: pathname === '/trade-finder' ? '2px solid #F97316' : '2px solid transparent',

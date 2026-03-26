@@ -7,12 +7,18 @@ interface RSSFeed {
 }
 
 const RSS_FEEDS: RSSFeed[] = [
-  { name: 'Moneycontrol', url: 'https://www.moneycontrol.com/rss/marketreports.xml', category: 'Market' },
-  { name: 'Moneycontrol', url: 'https://www.moneycontrol.com/rss/business.xml', category: 'Business' },
+  // ── Google News RSS (permanent — aggregates ALL Indian sources automatically)
+  // Google never blocks, never changes format, pulls from Moneycontrol/ET/LiveMint/BS/CNBCTV18 etc.
+  { name: 'Google News', url: 'https://news.google.com/rss/search?q=NSE+BSE+stock+market+india&hl=en-IN&gl=IN&ceid=IN:en', category: 'Market' },
+  { name: 'Google News', url: 'https://news.google.com/rss/search?q=nifty+sensex+today&hl=en-IN&gl=IN&ceid=IN:en', category: 'Market' },
+  { name: 'Google News', url: 'https://news.google.com/rss/search?q=india+stock+earnings+results+quarterly&hl=en-IN&gl=IN&ceid=IN:en', category: 'Stocks' },
+  { name: 'Google News', url: 'https://news.google.com/rss/search?q=RBI+SEBI+india+economy+policy&hl=en-IN&gl=IN&ceid=IN:en', category: 'Economy' },
+  { name: 'Google News', url: 'https://news.google.com/rss/search?q=india+IPO+bulk+deal+block+deal+buyback&hl=en-IN&gl=IN&ceid=IN:en', category: 'Stocks' },
+  { name: 'Google News', url: 'https://news.google.com/rss/search?q=india+merger+acquisition+order+win+contract&hl=en-IN&gl=IN&ceid=IN:en', category: 'Business' },
+
+  // ── Economic Times direct (most reliable direct feed, keep as backup)
   { name: 'Economic Times', url: 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms', category: 'Market' },
   { name: 'Economic Times', url: 'https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms', category: 'Stocks' },
-  { name: 'LiveMint', url: 'https://www.livemint.com/rss/markets', category: 'Market' },
-  { name: 'NDTV Profit', url: 'https://feeds.feedburner.com/ndtvprofit-latest', category: 'Business' },
 ]
 
 const STOCK_KEYWORDS: Record<string, string[]> = {
@@ -209,14 +215,23 @@ interface ParsedItem {
   link: string
   description?: string
   pubDate?: string
+  sourceName?: string  // extracted from Google News <source> tag
 }
 
 async function parseRSS(url: string): Promise<ParsedItem[]> {
   try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10000)
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; DTTerminal/1.0)' },
-      next: { revalidate: 180 }, // 3 min cache
-    })
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'no-cache',
+      },
+      next: { revalidate: 60 }, // 60s cache — matches dashboard refresh
+    }).finally(() => clearTimeout(timeout))
     if (!res.ok) return []
     const xml = await res.text()
     const items: ParsedItem[] = []
@@ -238,10 +253,12 @@ async function parseRSS(url: string): Promise<ParsedItem[]> {
          chunk.match(/<description>([\s\S]*?)<\/description>/s)?.[1] || '')
       )
       const pubDate = chunk.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || ''
-      if (title && link) items.push({ title, link, description: desc, pubDate })
+      // Google News includes <source url="...">Publisher Name</source>
+      const sourceName = chunk.match(/<source[^>]*>(.*?)<\/source>/)?.[1]?.trim() || undefined
+      if (title && link) items.push({ title, link, description: desc, pubDate, sourceName })
     }
 
-    return items.slice(0, 12)
+    return items.slice(0, 20)
   } catch {
     return []
   }
@@ -262,11 +279,12 @@ export async function fetchNews(): Promise<NewsItem[]> {
         const freshness = calcFreshnessScore(publishedAt)
         const relatedStocks = findRelatedStocks(fullText)
 
+        const displaySource = item.sourceName || feed.name
         return {
-          id: generateId(item.title, feed.name),
+          id: generateId(item.title, displaySource),
           title: item.title,
           summary: makeSummary(item.title, item.description),
-          source: feed.name,
+          source: displaySource,
           sourceUrl: item.link,
           publishedAt,
           sentiment: analyzeSentiment(fullText),
@@ -307,7 +325,7 @@ export async function fetchNews(): Promise<NewsItem[]> {
     return (b._score ?? 0) - (a._score ?? 0)
   })
 
-  return unique.slice(0, 60)
+  return unique.slice(0, 80)
 }
 
 export { STOCK_KEYWORDS }

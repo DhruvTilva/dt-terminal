@@ -326,20 +326,24 @@ export async function runDailyMarketScan(
 
     for (const { key, signals } of categories) {
       for (const s of signals) {
+        // Clamp values to fit DB column types (numeric field overflow guard)
+        const safePrice   = isFinite(s.price)         ? Math.min(s.price, 9999999)         : null
+        const safeChange  = isFinite(s.changePercent)  ? Math.max(-9999, Math.min(9999, s.changePercent)) : null
+
         rows.push({
           scan_date:      scanDate,
           session_id:     sessionId,
-          stock_symbol:   s.symbol,
-          stock_name:     s.stockName,
-          exchange:       'NSE',
+          stock_symbol:   s.symbol.slice(0, 30),   // guard against long BSE prefixed symbols
+          stock_name:     s.stockName.slice(0, 100),
+          exchange:       s.symbol.startsWith('BSE:') ? 'BSE' : 'NSE',
           strategy_type:  key === 'candle_patterns' ? 'candle_pattern' : key,
           direction:      s.direction,
           score:          s.score,
           match_info:     s.matchInfo,
           reason:         s.reason,
-          price:          s.price,
-          change_percent: s.changePercent,
-          rank:           null,   // set after insert
+          price:          safePrice,
+          change_percent: safeChange,
+          rank:           null,
         })
       }
     }
