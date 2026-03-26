@@ -9,6 +9,8 @@ export default function Header() {
   const { indices, stocks, alerts, searchQuery, setSearchQuery, markAlertRead, isRefreshing } = useStore()
   const [showAlerts, setShowAlerts] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
+  const mobileMenuRef = useRef<HTMLDivElement>(null)
   const [userName, setUserName] = useState<string | null>(null)
   const [isGuest, setIsGuest] = useState(false)       // true after auth check with no user
   const [showTradeToast, setShowTradeToast] = useState(false)
@@ -34,11 +36,14 @@ export default function Header() {
     })
   }, [])
 
-  // Close user menu on outside click
+  // Close user menu + mobile menu on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setShowUserMenu(false)
+      }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        setShowMobileMenu(false)
       }
     }
     document.addEventListener('mousedown', handler)
@@ -135,6 +140,85 @@ export default function Header() {
         </div>
 
         <div className="flex-1" />
+
+        {/* Mobile nav menu — sm:hidden so only appears on xs screens */}
+        <div className="relative block sm:hidden" ref={mobileMenuRef}>
+          <button
+            onClick={() => setShowMobileMenu(v => !v)}
+            className="flex items-center justify-center w-8 h-8 text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors"
+            style={{ color: showMobileMenu ? '#E6EDF3' : '#6B7A90' }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+
+          {showMobileMenu && (
+            <div className="absolute right-0 top-full mt-1 w-44 bg-bg-secondary border border-border-secondary z-50 animate-fade shadow-2xl overflow-hidden rounded-lg">
+              <button
+                onClick={() => { router.push('/dashboard'); setShowMobileMenu(false) }}
+                className="w-full text-left px-4 py-3 text-[12px] font-mono transition-colors"
+                style={{
+                  color: pathname === '/dashboard' ? '#E6EDF3' : '#6B7A90',
+                  background: pathname === '/dashboard' ? 'rgba(59,130,246,0.06)' : 'transparent',
+                  borderLeft: pathname === '/dashboard' ? '2px solid #3B82F6' : '2px solid transparent',
+                }}
+              >
+                DASHBOARD
+              </button>
+              <button
+                onClick={() => {
+                  setShowMobileMenu(false)
+                  if (isGuest) {
+                    setShowTradeToast(true)
+                    setTimeout(() => setShowTradeToast(false), 2500)
+                    setTimeout(() => router.push('/login'), 800)
+                    return
+                  }
+                  router.push('/trade-finder')
+                }}
+                className="w-full text-left px-4 py-3 text-[12px] font-mono transition-colors flex items-center gap-2"
+                style={{
+                  color: isGuest ? 'rgba(107,122,144,0.65)' : pathname === '/trade-finder' ? '#E6EDF3' : '#6B7A90',
+                  background: (!isGuest && pathname === '/trade-finder') ? 'rgba(249,115,22,0.06)' : 'transparent',
+                  borderLeft: (!isGuest && pathname === '/trade-finder') ? '2px solid #F97316' : '2px solid transparent',
+                }}
+              >
+                TRADE FINDER
+                {isGuest && (
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                )}
+              </button>
+              <button
+                onClick={() => { router.push('/creator'); setShowMobileMenu(false) }}
+                className="w-full text-left px-4 py-3 text-[12px] font-mono transition-colors"
+                style={{
+                  color: pathname === '/creator' ? '#E6EDF3' : '#6B7A90',
+                  background: pathname === '/creator' ? 'rgba(139,92,246,0.06)' : 'transparent',
+                  borderLeft: pathname === '/creator' ? '2px solid #8B5CF6' : '2px solid transparent',
+                }}
+              >
+                CREATOR
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Creator link */}
+        <button
+          onClick={() => router.push('/creator')}
+          className="hidden sm:block h-8 px-3 text-[11px] font-mono transition-colors"
+          style={{
+            color: pathname === '/creator' ? '#E6EDF3' : '#4A5568',
+            borderBottom: pathname === '/creator' ? '2px solid #8B5CF6' : '2px solid transparent',
+            background: 'transparent',
+          }}
+        >
+          CREATOR
+        </button>
 
         {/* LIVE / Refreshing badge */}
         {isRefreshing ? (

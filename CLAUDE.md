@@ -43,6 +43,8 @@ src/
 │   ├── globals.css              ← Design system: colors, fonts, animations, skeleton
 │   ├── layout.tsx               ← Root layout — MUST have h-full on html + body
 │   ├── page.tsx                 ← Landing page (login/enter buttons)
+│   ├── creator/
+│   │   └── page.tsx             ← Meet the Creator page (UPI QR, GitHub, support)
 │   ├── dashboard/
 │   │   └── page.tsx             ← Main 3-column dashboard + StatusBar component
 │   ├── (auth)/
@@ -338,6 +340,9 @@ CRON_SECRET=your-secret-here
 - LIVE badge (green) ↔ REFRESHING badge (blue spinner) based on `isRefreshing` store state
 - Scrolling ticker (55s loop) with indices + top movers
 - Alerts panel with inline red pill badge (no absolute positioning)
+- **Desktop nav** (`hidden md:flex`): DASHBOARD, TRADE FINDER tabs with active underline
+- **CREATOR link** (`hidden sm:block`): before LIVE badge, purple underline when active, color `#4A5568` → `#E6EDF3`
+- **Mobile hamburger** (`block sm:hidden`): ☰ button after `flex-1` spacer, dropdown with Dashboard / Trade Finder / Creator; active page gets colored left border; Trade Finder respects guest lock; closes on selection + outside click
 
 ### NewsFeed (`components/news/NewsFeed.tsx`)
 - Filter tabs: All / ⚡ Actionable / 🔥 High Impact / ▲ Bullish / ▼ Bearish
@@ -400,6 +405,12 @@ Also update the StatusBar countdown initial value in `app/dashboard/page.tsx`.
 6. **No real-time WebSocket**: Data is polled every 60 seconds. This is intentional to stay within free API limits.
 
 7. **Zustand store is in-memory**: All state resets on page refresh. Only `theme` is persisted to localStorage. Watchlist/bookmarks are re-fetched from Supabase on each session.
+
+8. **`devIndicators: false`** in `next.config.ts` — disables the Next.js 15 dev toolbar "N" badge intentionally.
+
+9. **Static assets** (QR code etc.) go in `public/` at the project root. Access via `/filename.png` in `<Image src="..." />`. The `public/qr-upi.png` file must be manually placed there for the Creator page QR to display.
+
+10. **Mobile nav**: Header hamburger is `block sm:hidden`. Never add `hidden sm:hidden` or similar that would hide it on all breakpoints.
 
 ---
 
