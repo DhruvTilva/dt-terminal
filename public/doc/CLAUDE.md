@@ -11,7 +11,7 @@
 - **Purpose**: Give retail traders a Bloomberg-style terminal with live prices, smart news, and auto-detected trade signals
 - **Target market**: Indian retail traders tracking NSE/BSE (NIFTY 50 stocks)
 - **Data sources**: Yahoo Finance API (prices) + RSS feeds from Moneycontrol, Economic Times, LiveMint, NDTV Profit (news)
-- **Auth**: Supabase (only needed for Watchlist persistence and Bookmarks — dashboard works without login)
+- **Auth**: Supabase (needed for Watchlist, Bookmarks, Admin Panel — dashboard works without login)
 
 ---
 
@@ -41,26 +41,41 @@
 src/
 ├── app/
 │   ├── globals.css              ← Design system: colors, fonts, animations, skeleton
-│   ├── layout.tsx               ← Root layout — MUST have h-full on html + body
+│   ├── layout.tsx               ← Root layout — includes <VisitorTracker /> component
 │   ├── page.tsx                 ← Landing page (login/enter buttons)
 │   ├── creator/
 │   │   └── page.tsx             ← Meet the Creator page (UPI QR, GitHub, support)
 │   ├── dashboard/
 │   │   └── page.tsx             ← Main 3-column dashboard + StatusBar component
+│   ├── admin/
+│   │   └── page.tsx             ← Admin panel (user management + visitor analytics)
 │   ├── (auth)/
 │   │   ├── login/page.tsx
 │   │   ├── signup/page.tsx
 │   │   └── forgot-password/page.tsx
+│   ├── auth/
+│   │   ├── success/page.tsx     ← Email confirmation success page
+│   │   └── reset-password/page.tsx ← Password reset form
 │   └── api/
 │       ├── stocks/route.ts      ← GET: indices/stocks/market-status | POST: opportunities
 │       ├── news/route.ts        ← GET: RSS news with scoring + sentiment
 │       ├── watchlist/route.ts   ← CRUD (requires Supabase auth)
 │       ├── bookmarks/route.ts   ← CRUD (requires Supabase auth)
 │       ├── cron/route.ts        ← Cron endpoint (CRON_SECRET protected)
-│       └── auth/                ← Supabase auth callbacks
+│       ├── visitor/
+│       │   └── track/route.ts   ← POST: session tracking (insert or heartbeat update)
+│       ├── admin/
+│       │   ├── users/route.ts         ← GET: list users | PATCH: toggle admin/blocked
+│       │   ├── analytics/route.ts     ← GET: visitor stats (total/today/activeNow)
+│       │   ├── cleanup/route.ts       ← DELETE: remove trade_finder_results > 10 days
+│       │   └── cleanup-visitors/route.ts ← DELETE: remove visitor_logs > 30 days
+│       └── auth/
+│           └── callback/route.ts ← Supabase auth callback (signup/OAuth/recovery)
 ├── components/
 │   ├── layout/
 │   │   └── Header.tsx           ← Live ticker, search, alerts, branding, LIVE badge
+│   ├── auth/
+│   │   └── AuthLayout.tsx       ← Shared left-panel layout for all auth pages
 │   ├── dashboard/
 │   │   ├── MarketStats.tsx      ← Right panel default: indices, breadth, signals, gainers/losers
 │   │   ├── MarketTicker.tsx     ← (alternate ticker component)
@@ -70,14 +85,16 @@ src/
 │   │   └── NewsDetail.tsx       ← Right panel when news selected
 │   ├── stocks/
 │   │   └── StockTable.tsx       ← Sortable stock table with view tabs
-│   └── watchlist/
-│       └── WatchlistPanel.tsx   ← Left panel: add/remove stocks, live prices
+│   ├── watchlist/
+│   │   └── WatchlistPanel.tsx   ← Left panel: add/remove stocks, live prices
+│   └── VisitorTracker.tsx       ← Client component: localStorage session tracking (renders null)
 ├── hooks/
 │   └── useMarketData.ts         ← Data fetching hook: auto-refresh, new item detection
 ├── lib/
 │   ├── stocks.ts                ← Yahoo Finance fetcher (fetchIndices, fetchStocks)
 │   ├── news.ts                  ← RSS parser + impact scoring + sentiment analysis
 │   ├── intelligence.ts          ← Trade signal detection (breakout, gap, volume, news)
+│   ├── trade-strategies.ts      ← Morning trend strategies for Trade Finder
 │   └── supabase/
 │       ├── client.ts            ← Browser Supabase client
 │       ├── server.ts            ← Server Supabase client
@@ -87,6 +104,17 @@ src/
 ├── types/
 │   └── index.ts                 ← TypeScript interfaces
 └── middleware.ts                ← Next.js middleware (Supabase session refresh)
+
+public/
+└── doc/
+    ├── CLAUDE.md                ← This file
+    ├── Changes.md               ← Quick file/line reference
+    └── Scale.md                 ← Scaling guide
+
+.github/
+└── workflows/
+    ├── cleanup.yml              ← Manual: delete trade_finder_results > 10 days
+    └── cleanup-visitors.yml     ← Manual: delete visitor_logs > 30 days
 ```
 
 ---
@@ -138,6 +166,13 @@ src/
 .ticker-track       /* Auto-scrolling ticker animation */
 .animate-fade       /* fade-in 0.15s */
 .animate-slide-up   /* slide-up 0.2s */
+/* Auth page classes */
+.auth-input         /* Dark input field style */
+.auth-btn-primary   /* Green primary button */
+.auth-btn-secondary /* Ghost secondary button */
+.auth-google-btn    /* Google OAuth button */
+.auth-spinner       /* Loading spinner */
+.auth-divider       /* "or" divider with lines */
 /* keyframe: spin — used for refresh spinner */
 ```
 
@@ -180,7 +215,33 @@ Live dot + status text + countdown timer + refresh button. Isolated as `<StatusB
 
 ---
 
-## 6. State Management (useStore.ts)
+## 6. Auth System
+
+### Pages
+| Route | File | Purpose |
+|-------|------|---------|
+| `/login` | `(auth)/login/page.tsx` | Email/password + Google OAuth + Guest mode |
+| `/signup` | `(auth)/signup/page.tsx` | New account + email confirmation flow |
+| `/forgot-password` | `(auth)/forgot-password/page.tsx` | Send password reset email |
+| `/auth/success` | `auth/success/page.tsx` | Shown after email confirmation link clicked |
+| `/auth/reset-password` | `auth/reset-password/page.tsx` | Set new password after reset link |
+
+### Auth Callback (`/api/auth/callback`)
+Handles all Supabase redirect scenarios:
+- `?type=recovery` → redirect to `/auth/reset-password`
+- `?type=signup` → redirect to `/auth/success`
+- Google OAuth → upsert profile → redirect to `/dashboard`
+- Any error → redirect to `/login?error=auth`
+
+### Guest Mode
+Login page has "Guest Mode" button that skips auth and goes directly to `/dashboard`. Dashboard works fully without login (no watchlist/bookmarks).
+
+### Blocked Users
+Login checks `profiles.is_blocked` — if true, signs user out and shows error message.
+
+---
+
+## 7. State Management (useStore.ts)
 
 ### Market Data
 ```typescript
@@ -211,7 +272,7 @@ bookmarks: BookmarkItem[]   // Persisted in Supabase
 
 ---
 
-## 7. Data Flow
+## 8. Data Flow
 
 ```
 useMarketData hook (mounted in dashboard/page.tsx)
@@ -236,33 +297,102 @@ After each refresh (not the first), `useMarketData` compares new news IDs agains
 
 ---
 
-## 8. API Routes
+## 9. API Routes
 
-### `GET /api/stocks`
-| Param | Returns |
-|-------|---------|
-| `?type=indices` | `IndexData[]` — NIFTY 50, SENSEX, BANK NIFTY from Yahoo Finance |
-| `?type=stocks` | `Stock[]` — 30 NIFTY stocks (can pass `?symbols=RELIANCE,TCS` to override) |
-| `?type=market-status` | `{ isOpen, nextOpenTime, nextCloseTime }` |
+### Public Routes
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/stocks` | GET | `?type=indices/stocks/market-status` |
+| `/api/stocks` | POST | `?type=opportunities` — detect trade signals |
+| `/api/news` | GET | RSS news with scoring |
+| `/api/watchlist` | GET/POST/DELETE | Requires auth |
+| `/api/bookmarks` | GET/POST/DELETE | Requires auth |
+| `/api/visitor/track` | POST | Session tracking (no auth needed) |
+| `/api/auth/callback` | GET | Supabase auth callback |
 
-### `POST /api/stocks?type=opportunities`
-- **Body**: `{ stocks: Stock[], news: NewsItem[] }`
-- **Returns**: `Opportunity[]` (max 20, sorted by impact)
+### Admin Routes (requires `is_admin = true` in profiles)
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/admin/users` | GET | List all users with profiles |
+| `/api/admin/users` | PATCH | Toggle `is_admin` or `is_blocked` |
+| `/api/admin/analytics` | GET | Visitor stats: total/today/activeNow |
+| `/api/admin/cleanup` | DELETE | Remove `trade_finder_results` older than 10 days |
+| `/api/admin/cleanup-visitors` | DELETE | Remove `visitor_logs` older than 30 days |
 
-### `GET /api/news`
-- Fetches 6 RSS feeds, parses, scores, deduplicates, returns top 60 items
-- Cached: `revalidate = 180` seconds
-
-### `POST/GET/DELETE /api/watchlist`
-- Requires Supabase auth session
-- POST: add symbol, GET: list, DELETE: `?symbol=RELIANCE`
-
-### `POST/GET/DELETE /api/bookmarks`
-- Requires Supabase auth session
+**Cleanup routes** also accept `x-cleanup-secret` header (matching `CLEANUP_SECRET` env var) for GitHub Actions calls without a browser session.
 
 ---
 
-## 9. Intelligence Engine (lib/intelligence.ts)
+## 10. Admin Panel (`/admin`)
+
+Access: Only users with `profiles.is_admin = true` can reach this page (redirects to `/dashboard` otherwise).
+
+### Features
+- **Visitor Analytics cards** (top): Total Visitors, Today, Active Now — fetched from `/api/admin/analytics`, manual ↻ refresh button
+- **User table**: Name, Email, Role badge, Status badge, Created date, Admin toggle, Blocked toggle
+- **Search**: Debounced by name/email
+- **Filter tabs**: All / Admin / Blocked
+- **YOU badge**: Current admin's own row is highlighted and toggles are disabled
+
+### Admin verifyAdmin pattern
+All admin API routes use the same `verifyAdmin()` helper that:
+1. Gets current session via `createServerClient()`
+2. Queries `profiles.is_admin` for that user
+3. Returns user object if admin, `null` otherwise
+
+---
+
+## 11. Visitor Tracking
+
+### How It Works
+- `<VisitorTracker />` in `layout.tsx` runs on every page (renders nothing visually)
+- On mount: checks `localStorage` for `visitor_session_id`
+  - **New visitor**: generates UUID, saves to localStorage, POSTs to `/api/visitor/track`
+  - **Returning (same session)**: only tracks if `visitor_last_track` was >5 minutes ago (debounce)
+- **Why debounced**: Dashboard auto-refreshes every 60s — without debounce, each refresh would create a false write
+
+### Session Storage (localStorage)
+```
+visitor_session_id   — UUID per browser/tab (persistent across refreshes)
+visitor_last_track   — Unix timestamp of last successful track call
+```
+
+### API (`/api/visitor/track`)
+- Uses admin/service-role client (bypasses RLS)
+- First visit: INSERT new row
+- Heartbeat: UPDATE `last_active_at` only (preserves `first_visit_at`)
+- Silently fails if table doesn't exist yet
+
+### Metrics (via `/api/admin/analytics`)
+- **Total Visitors**: COUNT all sessions
+- **Today**: COUNT sessions where `first_visit_at` >= today 00:00
+- **Active Now**: COUNT sessions where `last_active_at` >= 5 minutes ago
+
+---
+
+## 12. Trade Strategies (lib/trade-strategies.ts)
+
+Two morning-trend strategies for the Trade Finder:
+
+### Strict Morning Trend
+- Window: **9:30 AM – 10:30 AM** IST
+- Logic: ALL candles in that window moved in **one single direction** for **3 consecutive trading days**
+- Score: 90 (highest confidence)
+- Most reliable signal
+
+### General Morning Trend
+- Morning window: **9:30 AM – 10:30 AM** IST
+- Afternoon window: **10:30 AM – 3:30 PM** IST
+- Logic: Morning direction must **match** afternoon direction on ALL **3 of last 3** trading days, AND all 3 days must share the **same direction** (all bullish or all bearish)
+- Score: 85
+- Early exit (returns null) if ANY day has mismatch or insufficient candles
+
+### Helper: `windowCandles(candles, startH, startM, endH, endM)`
+Filters 5-min candles to a specific IST time window.
+
+---
+
+## 13. Intelligence Engine (lib/intelligence.ts)
 
 Detects 5 signal types from stock + news data:
 
@@ -278,7 +408,7 @@ Max 20 opportunities returned, sorted by impact.
 
 ---
 
-## 10. News Scoring (lib/news.ts)
+## 14. News Scoring (lib/news.ts)
 
 **Sources**: Moneycontrol (2 feeds), Economic Times (2 feeds), LiveMint, NDTV Profit
 
@@ -293,7 +423,7 @@ Max 20 opportunities returned, sorted by impact.
 
 ---
 
-## 11. Data Sources
+## 15. Data Sources
 
 ### Yahoo Finance (Stocks)
 ```
@@ -314,25 +444,109 @@ https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=2d
 
 ---
 
-## 12. Environment Variables
+## 16. Environment Variables
 
 ```env
-# Required for Watchlist/Bookmarks persistence
+# Required — Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key   ← required for admin routes + visitor tracking
 
 # App URL
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_SITE_URL=https://your-domain.vercel.app
 
 # Cron job protection
 CRON_SECRET=your-secret-here
+
+# Manual cleanup (used by GitHub Actions workflows)
+CLEANUP_SECRET=your-cleanup-secret-here
 ```
 
-> The dashboard works fully **without Supabase** — prices and news load without auth. Only watchlist/bookmarks require Supabase.
+> `SUPABASE_SERVICE_ROLE_KEY` is required for admin panel, visitor tracking, and cleanup routes. Never expose it to the browser.
 
 ---
 
-## 13. Key Components Reference
+## 17. GitHub Actions Workflows
+
+Both workflows are **manual-trigger only** (`workflow_dispatch`). Run from GitHub → Actions tab → select workflow → Run workflow.
+
+### cleanup.yml — Trade Data Cleanup
+- Calls `DELETE /api/admin/cleanup`
+- Deletes `trade_finder_results` older than **10 days**
+- Required GitHub secrets: `SITE_URL`, `CLEANUP_SECRET`
+
+### cleanup-visitors.yml — Visitor Logs Cleanup
+- Calls `DELETE /api/admin/cleanup-visitors`
+- Deletes `visitor_logs` older than **30 days**
+- Required GitHub secrets: `SITE_URL`, `CLEANUP_SECRET`
+
+---
+
+## 18. Supabase Schema
+
+```sql
+-- ── Core tables ──────────────────────────────────────────────────
+
+CREATE TABLE profiles (
+  id         uuid REFERENCES auth.users PRIMARY KEY,
+  uid        serial,
+  name       text,
+  email      text,
+  is_admin   boolean DEFAULT false,
+  is_blocked boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE watchlist (
+  id         uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id    uuid REFERENCES auth.users NOT NULL,
+  symbol     text NOT NULL,
+  name       text NOT NULL,
+  exchange   text DEFAULT 'NSE',
+  added_at   timestamptz DEFAULT now()
+);
+
+CREATE TABLE bookmarks (
+  id         uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id    uuid REFERENCES auth.users NOT NULL,
+  news_id    text NOT NULL,
+  news       jsonb NOT NULL,
+  saved_at   timestamptz DEFAULT now()
+);
+
+-- ── Trade Finder ──────────────────────────────────────────────────
+
+CREATE TABLE trade_finder_results (
+  -- 15 columns, scan_date DATE is the partition key
+  -- Cleaned up via /api/admin/cleanup (keep last 10 days)
+);
+
+-- ── Visitor Analytics ─────────────────────────────────────────────
+
+CREATE TABLE visitor_logs (
+  id             uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  session_id     text UNIQUE NOT NULL,
+  user_id        uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  first_visit_at timestamptz DEFAULT now() NOT NULL,
+  last_active_at timestamptz DEFAULT now() NOT NULL
+);
+
+CREATE INDEX idx_visitor_first  ON visitor_logs (first_visit_at);
+CREATE INDEX idx_visitor_active ON visitor_logs (last_active_at);
+-- Cleaned up via /api/admin/cleanup-visitors (keep last 30 days)
+
+-- ── RLS Policies ──────────────────────────────────────────────────
+
+ALTER TABLE watchlist ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bookmarks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "users own watchlist" ON watchlist FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "users own bookmarks" ON bookmarks FOR ALL USING (auth.uid() = user_id);
+-- visitor_logs and trade_finder_results use service-role key (bypass RLS)
+```
+
+---
+
+## 19. Key Components Reference
 
 ### Header (`components/layout/Header.tsx`)
 - Green blinking dot (10px) before brand name
@@ -341,39 +555,34 @@ CRON_SECRET=your-secret-here
 - Scrolling ticker (55s loop) with indices + top movers
 - Alerts panel with inline red pill badge (no absolute positioning)
 - **Desktop nav** (`hidden md:flex`): DASHBOARD, TRADE FINDER tabs with active underline
-- **CREATOR link** (`hidden sm:block`): before LIVE badge, purple underline when active, color `#4A5568` → `#E6EDF3`
-- **Mobile hamburger** (`block sm:hidden`): ☰ button after `flex-1` spacer, dropdown with Dashboard / Trade Finder / Creator; active page gets colored left border; Trade Finder respects guest lock; closes on selection + outside click
+- **CREATOR link** (`hidden sm:block`): before LIVE badge, purple underline when active
+- **Mobile hamburger** (`block sm:hidden`): dropdown with Dashboard / Trade Finder / Creator
+
+### AuthLayout (`components/auth/AuthLayout.tsx`)
+- Left panel (hidden on mobile, `lg:flex`): branding, chart SVG, feature list, exchange tags
+- Right panel: form area, max-width 360px centered
+- Mobile: shows logo above form
 
 ### NewsFeed (`components/news/NewsFeed.tsx`)
 - Filter tabs: All / ⚡ Actionable / 🔥 High Impact / ▲ Bullish / ▼ Bearish
 - Feed rows use `.feed-row` CSS class + impact class for left border color
 - NEW items: cyan background + `● NEW` badge (from `newItemIds` store), fades after 6s
-- Title sizing: high=16px, med=15px, low=14px
-- Summary: 13px, 2-line clamp, only for high+medium impact
-- Tags: max 3 stock tags per row
 
 ### OpportunityCard (`components/dashboard/OpportunityCard.tsx`)
 - Collapsible section with `⚡ TRADE SIGNALS` header
 - Type badges: breakout=green, vol_spike=blue, gap_up=green, gap_down=red, news_correlation=yellow
-- High-impact items get 2px red left border
-- Clicking a signal type in MarketStats filters this list and scrolls to it
 
-### MarketStats (`components/dashboard/MarketStats.tsx`)
-- Shown in right panel when no news is selected
-- Sections: Indices / Market Breadth / Signals Today (clickable filter buttons) / Top Gainers / Top Losers
-- Signal buttons filter OpportunityCard by type when clicked
-
-### StatusBar (inline in `app/dashboard/page.tsx`)
-- Isolated component — contains 1s countdown state so only it re-renders each second
-- Shows: green dot + LIVE → REFRESHING (blue) → "Updated just now" (8s) → "Auto refresh in Xs"
-- Refresh button: spinning ↻ + disabled while fetching
+### VisitorTracker (`components/VisitorTracker.tsx`)
+- Renders `null` — zero visual footprint
+- All logic in `useEffect` (runs once on mount)
+- Silently swallows all errors — never breaks the app
 
 ---
 
-## 14. Common Patterns
+## 20. Common Patterns
 
 ### Adding a new stock to tracking
-Edit `src/lib/stocks.ts` — add symbol to the `NIFTY_50_STOCKS` array and optionally to `DEFAULT_SYMBOLS`.
+Edit `src/lib/stocks.ts` — add symbol to the `NIFTY_50_STOCKS` array.
 
 ### Adding a new news source
 Edit `src/lib/news.ts` — add to `RSS_FEEDS` array with name, url, category.
@@ -385,73 +594,52 @@ Edit `src/lib/news.ts` — add to `RSS_FEEDS` array with name, url, category.
 4. Add signal button in `src/components/dashboard/MarketStats.tsx`
 
 ### Changing refresh interval
-Edit `src/hooks/useMarketData.ts` — change the `setInterval(fetchAllData, 60000)` value (ms).
+Edit `src/hooks/useMarketData.ts` — change `setInterval(fetchAllData, 60000)`.
 Also update the StatusBar countdown initial value in `app/dashboard/page.tsx`.
+
+### Running manual data cleanup
+GitHub → Actions → "Cleanup Old Trade Data" or "Cleanup Old Visitor Logs" → Run workflow.
+Or from browser console (logged in as admin):
+```js
+fetch('/api/admin/cleanup', { method: 'DELETE' }).then(r => r.json()).then(console.log)
+fetch('/api/admin/cleanup-visitors', { method: 'DELETE' }).then(r => r.json()).then(console.log)
+```
 
 ---
 
-## 15. Known Constraints & Gotchas
+## 21. Known Constraints & Gotchas
 
-1. **Layout height**: `html` and `body` MUST have `h-full` and `h-full overflow-hidden` respectively. Without this, the 3-column layout breaks and content overflows vertically.
+1. **Layout height**: `html` and `body` MUST have `h-full` and `h-full overflow-hidden` respectively.
 
-2. **Tailwind v4 opacity**: `bg-blue/15` uses `color-mix()` (Chrome 111+ / Firefox 113+ / Safari 16.2+). Use `rgba(59,130,246,0.15)` inline style if targeting older browsers.
+2. **Tailwind v4 opacity**: Use `rgba(59,130,246,0.15)` inline style if targeting older browsers.
 
-3. **Mobile layout**: Side panels use `hidden lg:flex` (not `translate-x-full`). Mobile drawers use `fixed` overlay with conditional render. Do not use `absolute + translate` approach — it fails without constrained parent height.
+3. **Mobile layout**: Side panels use `hidden lg:flex`. Mobile drawers use `fixed` overlay.
 
 4. **Next.js cache**: After code changes, if webpack chunk errors appear, run `rm -rf .next && npm run build`.
 
-5. **Yahoo Finance CORS**: Fetched server-side via API routes — never call Yahoo Finance from the browser directly.
+5. **Yahoo Finance CORS**: Always fetched server-side via API routes — never from browser directly.
 
-6. **No real-time WebSocket**: Data is polled every 60 seconds. This is intentional to stay within free API limits.
+6. **No real-time WebSocket**: Data polled every 60 seconds — intentional for free API limits.
 
-7. **Zustand store is in-memory**: All state resets on page refresh. Only `theme` is persisted to localStorage. Watchlist/bookmarks are re-fetched from Supabase on each session.
+7. **Zustand store is in-memory**: Resets on page refresh. Only `theme` persisted to localStorage.
 
-8. **`devIndicators: false`** in `next.config.ts` — disables the Next.js 15 dev toolbar "N" badge intentionally.
+8. **`devIndicators: false`** in `next.config.ts` — disables the Next.js 15 dev toolbar "N" badge.
 
-9. **Static assets** (QR code etc.) go in `public/` at the project root. Access via `/filename.png` in `<Image src="..." />`. The `public/qr-upi.png` file must be manually placed there for the Creator page QR to display.
+9. **Static assets** go in `public/` at project root. Access via `/filename.png` in `<Image>`.
 
-10. **Mobile nav**: Header hamburger is `block sm:hidden`. Never add `hidden sm:hidden` or similar that would hide it on all breakpoints.
+10. **SUPABASE_SERVICE_ROLE_KEY** must be set in Vercel env vars for admin routes and visitor tracking to work. It is NOT `NEXT_PUBLIC_` prefixed — server-side only.
+
+11. **visitor_logs table must be created manually** in Supabase SQL editor before visitor tracking activates. Until then, tracking silently fails without affecting the app.
+
+12. **trade_finder_results grows ~2.7 MB/day**. Run cleanup workflow when storage approaches 50 MB (safe until ~6 months from start).
 
 ---
 
-## 16. Run Commands
+## 22. Run Commands
 
 ```bash
 npm run dev      # Start dev server (localhost:3000)
 npm run build    # Production build (run after major changes)
 npm run start    # Serve production build
 npm run lint     # ESLint check
-```
-
----
-
-## 17. Supabase Schema (for Watchlist/Bookmarks)
-
-```sql
--- watchlist table
-CREATE TABLE watchlist (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id uuid REFERENCES auth.users NOT NULL,
-  symbol text NOT NULL,
-  name text NOT NULL,
-  exchange text DEFAULT 'NSE',
-  added_at timestamptz DEFAULT now()
-);
-
--- bookmarks table
-CREATE TABLE bookmarks (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id uuid REFERENCES auth.users NOT NULL,
-  news_id text NOT NULL,
-  news jsonb NOT NULL,
-  saved_at timestamptz DEFAULT now()
-);
-
--- Enable RLS on both tables
-ALTER TABLE watchlist ENABLE ROW LEVEL SECURITY;
-ALTER TABLE bookmarks ENABLE ROW LEVEL SECURITY;
-
--- Policies: users can only access their own rows
-CREATE POLICY "users own watchlist" ON watchlist FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "users own bookmarks" ON bookmarks FOR ALL USING (auth.uid() = user_id);
 ```

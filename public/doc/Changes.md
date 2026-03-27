@@ -234,6 +234,74 @@ File: `src/components/auth/AuthLayout.tsx`
 
 ---
 
+## ADMIN PANEL
+
+File: `src/app/admin/page.tsx`
+
+| What | Line |
+|------|------|
+| Analytics fetch (Total / Today / Active Now) | ~fetchAnalytics callback |
+| StatCard component (visitor stat card UI) | ~StatCard function |
+| Analytics auto-refresh on auth confirmed | ~useEffect on authChecking |
+| Analytics section header + Refresh button | ~"VISITOR ANALYTICS" label |
+| Stat card colors (blue/amber/green) | ~StatCard calls |
+
+---
+
+## VISITOR TRACKING
+
+File: `src/components/VisitorTracker.tsx`
+
+| What | Line |
+|------|------|
+| Heartbeat interval (5 min = skip re-track) | `HEARTBEAT_INTERVAL = 5 * 60 * 1000` |
+| localStorage key for session ID | `SESSION_KEY = 'visitor_session_id'` |
+| localStorage key for last track time | `LAST_TRACK_KEY = 'visitor_last_track'` |
+| Track API endpoint | `/api/visitor/track` (POST) |
+
+> VisitorTracker renders `null` — it's a silent client component in `layout.tsx`.
+
+### Analytics API endpoint
+File: `src/app/api/admin/analytics/route.ts`
+
+| What | Line |
+|------|------|
+| "Active Now" threshold (5 min) | `5 * 60 * 1000` |
+| Today cutoff (midnight IST) | `todayStart.setHours(0,0,0,0)` |
+
+---
+
+## DATA CLEANUP / MAINTENANCE
+
+### Trade Finder results cleanup (10-day retention)
+File: `src/app/api/admin/cleanup/route.ts`
+
+| What | Note |
+|------|------|
+| Retention period | 10 days (`cutoff.setDate - 10`) |
+| Column compared | `scan_date` (DATE type) |
+| Auth: admin session | via `verifyAdmin()` |
+| Auth: GitHub Actions | `x-cleanup-secret` header |
+
+GitHub Actions workflow: `.github/workflows/cleanup.yml`
+- Manual trigger only (`workflow_dispatch`)
+- Required secrets: `SITE_URL`, `CLEANUP_SECRET`
+
+### Visitor logs cleanup (30-day retention)
+File: `src/app/api/admin/cleanup-visitors/route.ts`
+
+| What | Note |
+|------|------|
+| Retention period | 30 days (`cutoff.setDate - 30`) |
+| Column compared | `last_active_at` (timestamptz) |
+| Auth | same as trade cleanup (session or secret) |
+
+GitHub Actions workflow: `.github/workflows/cleanup-visitors.yml`
+- Manual trigger only (`workflow_dispatch`)
+- Required secrets: `SITE_URL`, `CLEANUP_SECRET`
+
+---
+
 ## SUPABASE & AUTH CONFIG
 
 | What | File | Line |
@@ -249,8 +317,13 @@ File: `.env.local` (not committed — create manually)
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 NEXT_PUBLIC_SITE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+CLEANUP_SECRET=
 CRON_SECRET=
 ```
+
+> `SUPABASE_SERVICE_ROLE_KEY` — used by visitor tracking and cleanup routes (server-side only, never expose to client)
+> `CLEANUP_SECRET` — shared secret between GitHub Actions and cleanup API routes
 
 ---
 
@@ -282,3 +355,7 @@ File: `next.config.ts`
 | Login redirect destination | `src/app/(auth)/login/page.tsx` line 38 |
 | Panel widths | `src/app/dashboard/page.tsx` line 151 & 223 |
 | Alerts limit | `src/store/useStore.ts` line 79 |
+| Visitor heartbeat interval | `src/components/VisitorTracker.tsx` (HEARTBEAT_INTERVAL) |
+| Trade cleanup retention | `src/app/api/admin/cleanup/route.ts` (setDate - 10) |
+| Visitor log retention | `src/app/api/admin/cleanup-visitors/route.ts` (setDate - 30) |
+| Admin analytics "Active Now" window | `src/app/api/admin/analytics/route.ts` (5 * 60 * 1000) |

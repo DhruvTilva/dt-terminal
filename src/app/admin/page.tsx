@@ -13,6 +13,12 @@ type User = {
   created_at: string
 }
 
+type Analytics = {
+  total: number
+  today: number
+  activeNow: number
+}
+
 function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
   return (
     <button
@@ -36,6 +42,22 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
   )
 }
 
+function StatCard({ label, value, color, loading }: { label: string; value: number; color: string; loading: boolean }) {
+  return (
+    <div style={{
+      background: '#121A2B', border: `1px solid ${color}22`,
+      borderRadius: 8, padding: '14px 18px', flex: 1, minWidth: 120,
+    }}>
+      <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: '#6B7A90', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 26, fontWeight: 700, color: loading ? '#354558' : color, fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
+        {loading ? '—' : value.toLocaleString()}
+      </div>
+    </div>
+  )
+}
+
 export default function AdminPage() {
   const router = useRouter()
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -47,6 +69,8 @@ export default function AdminPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const [highlightId, setHighlightId] = useState<string | null>(null)
+  const [analytics, setAnalytics] = useState<Analytics | null>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(true)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Admin auth check
@@ -64,6 +88,21 @@ export default function AdminPage() {
       setAuthChecking(false)
     })
   }, [router])
+
+  // Fetch analytics once auth is confirmed
+  const fetchAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true)
+    try {
+      const res = await fetch('/api/admin/analytics')
+      const data = await res.json()
+      if (res.ok) setAnalytics(data)
+    } catch { /* silent */ }
+    setAnalyticsLoading(false)
+  }, [])
+
+  useEffect(() => {
+    if (!authChecking) fetchAnalytics()
+  }, [authChecking, fetchAnalytics])
 
   const fetchUsers = useCallback(async (q: string, f: string) => {
     setLoading(true)
@@ -142,6 +181,26 @@ export default function AdminPage() {
       </div>
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px' }}>
+
+        {/* ── Visitor Analytics Cards ── */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: '#6B7A90', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Visitor Analytics
+            </span>
+            <button
+              onClick={fetchAnalytics}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-mono)', color: '#3B82F6', padding: 0 }}
+            >
+              ↻ Refresh
+            </button>
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <StatCard label="Total Visitors" value={analytics?.total ?? 0}     color="#3B82F6" loading={analyticsLoading} />
+            <StatCard label="Today"          value={analytics?.today ?? 0}     color="#F59E0B" loading={analyticsLoading} />
+            <StatCard label="Active Now"     value={analytics?.activeNow ?? 0} color="#22C55E" loading={analyticsLoading} />
+          </div>
+        </div>
 
         {/* Controls */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>

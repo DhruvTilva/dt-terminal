@@ -10,9 +10,35 @@
 | Service | What it does | Free Limit |
 |---------|-------------|------------|
 | **Vercel** (Hobby) | Hosts the Next.js app | 100GB bandwidth/month, 100 deployments/day |
-| **Supabase** (Free) | Auth + Watchlist + Bookmarks DB | 500MB DB, 50,000 MAU, pauses after 7 days inactivity |
+| **Supabase** (Free) | Auth + Watchlist + Bookmarks + Visitor Tracking DB | 500MB DB, 50,000 MAU, pauses after 7 days inactivity |
 | **Yahoo Finance API** | Stock price data | Unofficial, no account needed, rate limited |
 | **RSS Feeds** | News from MC, ET, Mint, NDTV | Free, no limit |
+
+---
+
+## DATABASE STORAGE ESTIMATES
+
+### trade_finder_results
+- Growth rate: ~4,700 rows/day ≈ 2.7 MB/day
+- **With cleanup job (10-day retention)**: steady-state ~27 MB — no risk on free tier
+- Without cleanup: would hit 500 MB in ~6 months
+- Cleanup job: `.github/workflows/cleanup.yml` → run manually when needed
+
+### visitor_logs
+- Growth rate: ~1 row per unique browser session
+- Each row: ~200–400 bytes
+- At 100 daily visitors: ~14 KB/day → ~5 MB/year — negligible
+- Cleanup job: `.github/workflows/cleanup-visitors.yml` → keeps 30 days, delete older
+- Heartbeat: client fires max once per 5 min → low write volume even with active users
+
+### Overall DB usage (approximate steady-state)
+| Table | Approx Size |
+|-------|-------------|
+| trade_finder_results (10-day cap) | ~27 MB |
+| visitor_logs (30-day rolling) | < 5 MB |
+| profiles | < 1 MB |
+| watchlist / bookmarks | < 2 MB |
+| **Total** | **~35 MB** — well within 500 MB free limit |
 
 ---
 
@@ -24,7 +50,8 @@
 | > 80GB bandwidth/month on Vercel | Upgrade Vercel plan |
 | Supabase pausing frequently | Switch to always-on DB |
 | Yahoo Finance rate limiting (429 errors) | Add caching layer or switch data source |
-| > 500MB DB storage | Upgrade Supabase or migrate DB |
+| > 400MB DB storage | Run cleanup jobs + plan Supabase upgrade |
+| trade_finder_results cleanup not run in 2+ weeks | Run `.github/workflows/cleanup.yml` manually |
 
 ---
 
