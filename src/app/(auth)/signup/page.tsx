@@ -60,13 +60,21 @@ export default function SignupPage() {
             </svg>
           </div>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: '#E6EDF3', marginBottom: 8 }}>Check your inbox</h1>
-          <p style={{ fontSize: 13, color: '#9FB0C0', lineHeight: 1.6, marginBottom: 24 }}>
+          <p style={{ fontSize: 13, color: '#9FB0C0', lineHeight: 1.6, marginBottom: 16 }}>
             We sent a confirmation link to<br />
             <span style={{ color: '#E6EDF3', fontWeight: 500 }}>{email}</span>
           </p>
-          <p style={{ fontSize: 13, color: '#6B7A90', marginBottom: 24 }}>
+          <p style={{ fontSize: 13, color: '#6B7A90', lineHeight: 1.6, marginBottom: 16 }}>
             Click the link in the email to activate your account, then sign in.
           </p>
+          <div
+            className="rounded-lg px-4 py-3 mb-6 text-left"
+            style={{ background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.2)' }}
+          >
+            <p style={{ fontSize: 12, color: '#CA8A04', lineHeight: 1.6, margin: 0 }}>
+              <span style={{ fontWeight: 600 }}>Didn&apos;t receive the email?</span> No worries — check your <strong>Spam</strong> or <strong>Junk</strong> folder. Gmail may show a safety warning for new senders, that&apos;s completely normal 😊 Just click <strong>&quot;Looks safe&quot;</strong> and open the email to continue.
+            </p>
+          </div>
           <Link href="/login" className="auth-btn-primary inline-block text-center">
             Back to Sign In
           </Link>
