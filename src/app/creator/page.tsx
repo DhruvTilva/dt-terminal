@@ -70,7 +70,7 @@ export default function CreatorPage() {
           >
             <p className="section-label mb-3">LINKS</p>
             <Link
-              href="https://github.com/DhruvTilva"
+              href="https://github.com/DhruvTilva/dt-terminal"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-lg transition-colors hover:bg-bg-hover"
