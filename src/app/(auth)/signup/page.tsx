@@ -60,9 +60,9 @@ export default function SignupPage() {
   if (success) {
     return (
       <AuthLayout>
-        <div className="text-center py-6">
+        <div className="text-center" style={{ paddingTop: 8, paddingBottom: 8 }}>
           <div
-            className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-6"
+            className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-5"
             style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }}
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -70,22 +70,22 @@ export default function SignupPage() {
             </svg>
           </div>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: '#E6EDF3', marginBottom: 8 }}>Check your inbox</h1>
-          <p style={{ fontSize: 13, color: '#9FB0C0', lineHeight: 1.6, marginBottom: 16 }}>
-            We sent a confirmation link to<br />
-            <span style={{ color: '#E6EDF3', fontWeight: 500 }}>{email}</span>
+          <p style={{ fontSize: 13, color: '#9FB0C0', lineHeight: 1.6, marginBottom: 4 }}>
+            We sent a confirmation link to
           </p>
-          <p style={{ fontSize: 13, color: '#6B7A90', lineHeight: 1.6, marginBottom: 16 }}>
+          <p style={{ fontSize: 14, color: '#E6EDF3', fontWeight: 500, marginBottom: 12 }}>{email}</p>
+          <p style={{ fontSize: 13, color: '#6B7A90', lineHeight: 1.6, marginBottom: 14 }}>
             Click the link in the email to activate your account, then sign in.
           </p>
           <div
-            className="rounded-lg px-4 py-3 mb-6 text-left"
-            style={{ background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.2)' }}
+            className="rounded-lg px-4 py-3 text-left"
+            style={{ background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.2)', marginBottom: 16 }}
           >
             <p style={{ fontSize: 12, color: '#CA8A04', lineHeight: 1.6, margin: 0 }}>
               <span style={{ fontWeight: 600 }}>Didn&apos;t receive the email?</span> No worries — check your <strong>Spam</strong> or <strong>Junk</strong> folder. Gmail may show a safety warning for new senders, that&apos;s completely normal 😊 Just click <strong>&quot;Looks safe&quot;</strong> and open the email to continue.
             </p>
           </div>
-          <Link href="/login" className="auth-btn-primary inline-block text-center">
+          <Link href="/login" className="auth-btn-primary">
             Back to Sign In
           </Link>
         </div>
@@ -96,11 +96,11 @@ export default function SignupPage() {
   return (
     <AuthLayout>
       {/* Heading */}
-      <div className="mb-8">
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#E6EDF3', letterSpacing: '-0.3px', marginBottom: 6 }}>
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: '#E6EDF3', letterSpacing: '-0.4px', marginBottom: 5 }}>
           Create your account
         </h1>
-        <p style={{ fontSize: 13, color: '#6B7A90' }}>
+        <p style={{ fontSize: 13.5, color: '#6B7A90', lineHeight: 1.5 }}>
           Join DT&apos;s Terminal — free to get started
         </p>
       </div>
@@ -110,10 +110,9 @@ export default function SignupPage() {
         type="button"
         onClick={handleGoogle}
         disabled={googleLoading}
-        className="w-full flex items-center justify-center gap-3 rounded-lg px-4 py-2.5 mb-5 transition-colors"
-        style={{ background: '#161B22', border: '1px solid #30363D', color: '#E6EDF3', fontSize: 14, fontWeight: 500, cursor: googleLoading ? 'not-allowed' : 'pointer', opacity: googleLoading ? 0.7 : 1 }}
+        className="auth-google-btn"
       >
-        <svg width="18" height="18" viewBox="0 0 24 24">
+        <svg width="18" height="18" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
           <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
@@ -122,18 +121,19 @@ export default function SignupPage() {
         {googleLoading ? 'Redirecting…' : 'Continue with Google'}
       </button>
 
-      <div className="flex items-center gap-3 mb-5">
-        <div style={{ flex: 1, height: 1, background: '#21262D' }} />
-        <span style={{ fontSize: 12, color: '#6B7A90' }}>or sign up with email</span>
-        <div style={{ flex: 1, height: 1, background: '#21262D' }} />
+      {/* Divider */}
+      <div className="auth-divider" style={{ margin: '14px 0' }}>
+        <div className="auth-divider-line" />
+        <span className="auth-divider-text">or sign up with email</span>
+        <div className="auth-divider-line" />
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {/* Error */}
         {error && (
           <div
-            className="flex items-start gap-2.5 rounded-lg px-4 py-3"
-            style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)' }}
+            className="flex items-start gap-2.5 rounded-xl px-4 py-3"
+            style={{ background: 'rgba(244,63,94,0.07)', border: '1px solid rgba(244,63,94,0.18)' }}
           >
             <span style={{ color: '#F43F5E', fontSize: 13, marginTop: 1 }}>✕</span>
             <span style={{ fontSize: 13, color: '#F43F5E', lineHeight: 1.5 }}>{error}</span>
@@ -141,8 +141,8 @@ export default function SignupPage() {
         )}
 
         {/* Name */}
-        <div>
-          <label style={{ fontSize: 12, fontWeight: 500, color: '#9FB0C0', display: 'block', marginBottom: 6 }}>
+        <div className="flex flex-col gap-2">
+          <label style={{ fontSize: 12, fontWeight: 500, color: '#7A8FA8' }}>
             Full name
           </label>
           <input
@@ -156,8 +156,8 @@ export default function SignupPage() {
         </div>
 
         {/* Email */}
-        <div>
-          <label style={{ fontSize: 12, fontWeight: 500, color: '#9FB0C0', display: 'block', marginBottom: 6 }}>
+        <div className="flex flex-col gap-2">
+          <label style={{ fontSize: 12, fontWeight: 500, color: '#7A8FA8' }}>
             Email address
           </label>
           <input
@@ -171,10 +171,9 @@ export default function SignupPage() {
         </div>
 
         {/* Password */}
-        <div>
-          <label style={{ fontSize: 12, fontWeight: 500, color: '#9FB0C0', display: 'block', marginBottom: 6 }}>
-            Password
-            <span style={{ color: '#6B7A90', fontWeight: 400, marginLeft: 6 }}>min 6 characters</span>
+        <div className="flex flex-col gap-2">
+          <label style={{ fontSize: 12, fontWeight: 500, color: '#7A8FA8' }}>
+            Password <span style={{ color: '#4A5568', fontWeight: 400 }}>— min 6 characters</span>
           </label>
           <div className="relative">
             <input
@@ -197,9 +196,9 @@ export default function SignupPage() {
         </div>
 
         {/* Submit */}
-        <button type="submit" disabled={loading} className="auth-btn-primary mt-3">
+        <button type="submit" disabled={loading} className="auth-btn-primary" style={{ marginTop: 2 }}>
           {loading ? (
-            <span className="flex items-center justify-center gap-2">
+            <span className="flex items-center gap-2">
               <span className="auth-spinner" />
               Creating account…
             </span>
@@ -208,7 +207,7 @@ export default function SignupPage() {
       </form>
 
       {/* Footer */}
-      <p className="text-center mt-8" style={{ fontSize: 13, color: '#6B7A90' }}>
+      <p className="text-center" style={{ fontSize: 13, color: '#6B7A90', marginTop: 20 }}>
         Already have an account?{' '}
         <Link href="/login" style={{ color: '#3B82F6' }} className="hover:underline font-medium">
           Sign in
