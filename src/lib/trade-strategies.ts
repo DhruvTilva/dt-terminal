@@ -142,7 +142,7 @@ async function fetchYahoo(
   }
 }
 
-// ─── Strategy 1: Strict Morning Trend (9:15–10:00) ───────────────────────────
+// ─── Strategy 1: Strict Morning Trend (9:30–10:30) ───────────────────────────
 // All consecutive 5-min candles must close higher (bullish) or lower (bearish)
 // across 3 consecutive trading days (sliding window).
 
@@ -154,7 +154,7 @@ function analyzeStrictMorningTrend(
   const recent = days.slice(-3)
 
   const dayResults = recent.map(day => {
-    const morning = windowCandles(day.candles, 9, 15, 10, 0)
+    const morning = windowCandles(day.candles, 9, 30, 10, 30)
     if (morning.length < 4) return 'mixed' as const
 
     let bull = true, bear = true
@@ -176,7 +176,7 @@ function analyzeStrictMorningTrend(
       categoryLabel: 'Strict Morning Trend',
       direction: 'bullish',
       score: 92,
-      reason: `Stock moved UP between 9:15–10:00 for 3 consecutive days. Every 5-min candle closed higher than the previous candle throughout the morning window on each of those days — a textbook strict bullish opening pattern.`,
+      reason: `Stock moved UP between 9:30–10:30 for 3 consecutive days. Every 5-min candle closed higher than the previous candle throughout the morning window on each of those days — a textbook strict bullish opening pattern.`,
       matchInfo: '3/3 days · strict bullish',
       detectedAt: new Date().toISOString(),
     }
@@ -190,7 +190,7 @@ function analyzeStrictMorningTrend(
       categoryLabel: 'Strict Morning Trend',
       direction: 'bearish',
       score: 92,
-      reason: `Stock moved DOWN between 9:15–10:00 for 3 consecutive days. Every 5-min candle closed lower than the previous candle throughout the morning window on each of those days — a textbook strict bearish opening pattern.`,
+      reason: `Stock moved DOWN between 9:30–10:30 for 3 consecutive days. Every 5-min candle closed lower than the previous candle throughout the morning window on each of those days — a textbook strict bearish opening pattern.`,
       matchInfo: '3/3 days · strict bearish',
       detectedAt: new Date().toISOString(),
     }
@@ -199,58 +199,67 @@ function analyzeStrictMorningTrend(
   return null
 }
 
-// ─── Strategy 2: General Morning Trend (9:15–10:00) ──────────────────────────
-// Net move from first open to last close in the window.
-// At least 3 out of last 5 days must show same direction (sliding window).
+// ─── Strategy 2: General Morning Trend ───────────────────────────────────────
+// Morning session (9:30–10:30) direction must match rest-of-day (10:30–3:30)
+// on ALL 3 of the last 3 trading days, and all 3 days must share same direction.
 
 function analyzeGeneralMorningTrend(
   symbol: string, name: string, price: number, changePercent: number,
   days: DayGroup[]
 ): TradeSignal | null {
   if (days.length < 3) return null
-  const recent = days.slice(-5)
+  const recent = days.slice(-3)
 
-  const dayDirections: ('bullish' | 'bearish')[] = []
+  let bullishValidDays = 0
+  let bearishValidDays = 0
 
   for (const day of recent) {
-    const morning = windowCandles(day.candles, 9, 15, 10, 0)
-    if (morning.length < 2) continue
-    const firstOpen = morning[0].open
-    const lastClose = morning[morning.length - 1].close
-    if (lastClose > firstOpen) dayDirections.push('bullish')
-    else if (lastClose < firstOpen) dayDirections.push('bearish')
+    const morning   = windowCandles(day.candles,  9, 30, 10, 30)
+    const afternoon = windowCandles(day.candles, 10, 30, 15, 30)
+
+    // Need at least one candle in each window to determine direction
+    if (morning.length < 1 || afternoon.length < 1) return null
+
+    const morningOpen    = morning[0].open
+    const morningClose   = morning[morning.length - 1].close
+    const afternoonOpen  = afternoon[0].open
+    const afternoonClose = afternoon[afternoon.length - 1].close
+
+    const morningDir   = morningClose   > morningOpen   ? 'bullish' : 'bearish'
+    const afternoonDir = afternoonClose > afternoonOpen ? 'bullish' : 'bearish'
+
+    // Day is only valid if morning direction matches afternoon direction
+    if (morningDir !== afternoonDir) return null
+
+    if (morningDir === 'bullish') bullishValidDays++
+    else bearishValidDays++
   }
 
-  if (dayDirections.length < 3) return null
-
-  const total = dayDirections.length
-  const bullCount = dayDirections.filter(d => d === 'bullish').length
-  const bearCount = dayDirections.filter(d => d === 'bearish').length
-
-  if (bullCount >= 3) {
+  // All 3 days must be consistent AND all share the same direction
+  if (bullishValidDays === 3) {
     return {
       id: `general_morning_bull_${symbol}`,
       symbol, stockName: name, price, changePercent,
       strategyType: 'general_morning',
       categoryLabel: 'General Morning Trend',
       direction: 'bullish',
-      score: Math.min(90, 60 + bullCount * 4),
-      reason: `Net price movement from 9:15 open to 10:00 close was POSITIVE on ${bullCount} of last ${total} trading days. Stock has a strong bullish morning bias — consistently gains ground in the opening 45 minutes.`,
-      matchInfo: `${bullCount}/${total} days bullish`,
+      score: 85,
+      reason: `On all 3 of the last 3 trading days, the morning session (9:30–10:30) was BULLISH and the rest-of-day (10:30–3:30) followed in the same direction. Strong and consistent bullish follow-through pattern.`,
+      matchInfo: `3/3 days consistent bullish`,
       detectedAt: new Date().toISOString(),
     }
   }
 
-  if (bearCount >= 3) {
+  if (bearishValidDays === 3) {
     return {
       id: `general_morning_bear_${symbol}`,
       symbol, stockName: name, price, changePercent,
       strategyType: 'general_morning',
       categoryLabel: 'General Morning Trend',
       direction: 'bearish',
-      score: Math.min(90, 60 + bearCount * 4),
-      reason: `Net price movement from 9:15 open to 10:00 close was NEGATIVE on ${bearCount} of last ${total} trading days. Stock has a strong bearish morning bias — consistently loses ground in the opening 45 minutes.`,
-      matchInfo: `${bearCount}/${total} days bearish`,
+      score: 85,
+      reason: `On all 3 of the last 3 trading days, the morning session (9:30–10:30) was BEARISH and the rest-of-day (10:30–3:30) followed in the same direction. Strong and consistent bearish follow-through pattern.`,
+      matchInfo: `3/3 days consistent bearish`,
       detectedAt: new Date().toISOString(),
     }
   }

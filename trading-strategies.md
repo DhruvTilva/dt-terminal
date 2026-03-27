@@ -8,8 +8,8 @@
 
 | # | Strategy | Time Frame | Data Used | Score |
 |---|----------|-----------|-----------|-------|
-| 1 | Strict Morning Trend | 9:15 – 10:00 AM | 5-min candles, last 3 days | 92 (fixed) |
-| 2 | General Morning Trend | 9:15 – 10:00 AM | 5-min candles, last 5 days | 60 – 90 |
+| 1 | Strict Morning Trend | 9:30 – 10:30 AM | 5-min candles, last 3 days | 92 (fixed) |
+| 2 | General Morning Trend | 9:30 – 10:30 AM + 10:30 – 3:30 PM | 5-min candles, last 3 days | 85 (fixed) |
 | 3 | Candle Pattern | Latest session | Last 5 candles of latest day | 75 – 80 |
 | 4 | Long Trend | 1 month+ | Daily candles, 60 days | 65 – 95 |
 | 5 | High Volatility Move | 9:30 – 10:30 AM | 5-min candles, last 3 days | 60 – 95 |
@@ -23,7 +23,7 @@
 
 ### How It Works
 
-- Time window: **9:15 AM → 10:00 AM**
+- Time window: **9:30 AM → 10:30 AM**
 - Checks last **3 consecutive trading days**
 - For each day: every single 5-min candle must close **strictly higher** (bullish) or **strictly lower** (bearish) than the previous candle
 - All 3 days must show the same direction
@@ -32,7 +32,7 @@
 
 ```
 For each day in last 3 days:
-  morning candles = 5-min candles from 9:15 to 10:00
+  morning candles = 5-min candles from 9:30 to 10:30
   if every candle[i].close > candle[i-1].close → BULLISH day
   if every candle[i].close < candle[i-1].close → BEARISH day
   else → MIXED (disqualified)
@@ -67,48 +67,53 @@ Stock has shown machine-like consistency in morning direction. Very high probabi
 
 ### How It Works
 
-- Time window: **9:15 AM → 10:00 AM**
-- Checks last **5 trading days** (sliding window)
-- For each day: net move = last close minus first open in the window
-- If net move is positive → bullish day, negative → bearish day
-- Needs at least **3 out of 5 days** in same direction
+- Morning window: **9:30 AM → 10:30 AM**
+- Afternoon window: **10:30 AM → 3:30 PM**
+- Checks last **3 trading days** (all 3 must pass)
+- For each day: morning direction must match afternoon direction
+- All 3 days must also share the **same overall direction**
 
 ### Filter Logic
 
 ```
-For each day in last 5 days:
-  firstOpen = first candle open at 9:15
-  lastClose = last candle close at ~10:00
-  if lastClose > firstOpen → Bullish day
-  if lastClose < firstOpen → Bearish day
+For each day in last 3 days:
+  morningOpen    = first candle open  at or after 9:30 AM
+  morningClose   = last candle close  at or before 10:30 AM
+  afternoonOpen  = first candle open  at or after 10:30 AM
+  afternoonClose = last candle close  at or before 3:30 PM
+
+  if morningClose > morningOpen  → morning  = Bullish
+  if morningClose < morningOpen  → morning  = Bearish
+  if afternoonClose > afternoonOpen → afternoon = Bullish
+  if afternoonClose < afternoonOpen → afternoon = Bearish
+
+  if morning != afternoon → day is INVALID → stock FAILS immediately
 
 Pass condition:
-  bullCount ≥ 3 → Bullish signal
-  bearCount ≥ 3 → Bearish signal
+  All 3 days valid AND all 3 bullish → Bullish signal (score 85)
+  All 3 days valid AND all 3 bearish → Bearish signal (score 85)
+  Any mismatch or mixed direction     → NO signal
 ```
 
-### Score Formula
-```
-score = min(90, 60 + count × 4)
-
-3/5 days → 60 + 12 = 72
-4/5 days → 60 + 16 = 76
-5/5 days → 60 + 20 = 80
-```
+### Score
+Fixed score of **85** for all passing stocks (strict condition means high quality).
 
 ### Example
 ```
-TCS — 4/5 days bullish morning
-Day 1: Open 3800, Close 3825 → +25 → Bullish ✓
-Day 2: Open 3820, Close 3810 → -10 → Bearish ✗
-Day 3: Open 3815, Close 3840 → +25 → Bullish ✓
-Day 4: Open 3835, Close 3855 → +20 → Bullish ✓
-Day 5: Open 3850, Close 3870 → +20 → Bullish ✓
-→ Signal: General Morning Trend (Bullish) · 4/5 days · Score 76
+INFY — all 3 days consistent bullish
+Day 1: Morning 9:30→10:30 Bull ✓ · Afternoon 10:30→3:30 Bull ✓ → valid
+Day 2: Morning 9:30→10:30 Bull ✓ · Afternoon 10:30→3:30 Bull ✓ → valid
+Day 3: Morning 9:30→10:30 Bull ✓ · Afternoon 10:30→3:30 Bull ✓ → valid
+→ Signal: General Morning Trend (Bullish) · 3/3 days consistent · Score 85
+
+HDFC — day 2 mismatch
+Day 1: Morning Bull ✓ · Afternoon Bull ✓ → valid
+Day 2: Morning Bull ✓ · Afternoon Bear ✗ → INVALID → stock FAILS
+→ No signal
 ```
 
 ### What It Means for Trader
-Stock has a consistent morning bias. Less strict than Strategy 1 but catches more stocks. Good for morning breakout entries.
+Stock consistently follows its morning direction for the rest of the day — 3 days in a row. High-confidence follow-through pattern. Enter in direction of morning bias after 10:30 confirmation.
 
 ---
 

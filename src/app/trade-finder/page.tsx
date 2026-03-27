@@ -49,8 +49,8 @@ const STRATEGIES = [
 ]
 
 const FILTER_EXPLAIN: Record<string, { title: string; desc: string }> = {
-  strict_morning:  { title: 'Strict Morning Trend',  desc: 'Every 9:15–10:00 candle moved in one direction for 3 straight days. The strongest, most reliable signal.' },
-  general_morning: { title: 'General Morning Trend', desc: 'Stock trended up or down in the morning on 3 of the last 5 days. Reliable, but softer than Strict Morning.' },
+  strict_morning:  { title: 'Strict Morning Trend',  desc: 'Every 9:30–10:30 candle moved in one direction for 3 straight days. The strongest, most reliable signal.' },
+  general_morning: { title: 'General Morning Trend', desc: 'Morning session (9:30–10:30) direction matched the rest-of-day (10:30–3:30) on all 3 of the last 3 trading days — and all in the same direction. Stocks that consistently follow through on their morning bias.' },
   candle_pattern:  { title: 'Candle Signal',         desc: 'Latest candle is a Hammer, Shooting Star, or a strong green/red bar — hints at a reversal or continuation right now.' },
   long_trend:      { title: 'Long Trend',            desc: '20-day MA is above/below 50-day MA for 1+ month = clean trend. Best for swing trades (hold days to weeks).' },
   high_volatility: { title: 'High Volatility Move',  desc: 'Moved 2.2%–4.5% between 9:30–10:30 AM on all 3 recent days, with solid volume. Sweet spot for intraday scalping — not too slow, not overextended.' },
@@ -250,6 +250,65 @@ function InfoPopup({ strategyKey, onClose }: { strategyKey: string; onClose: () 
             Stocks near 20-day MA = better entry · Avoid if &gt;10% extended
           </div>
         )}
+
+        {/* ── Understanding the Data ── */}
+        <div style={{ height: 1, background: '#263042', margin: '18px 0 14px' }} />
+        <div style={{
+          fontSize: 10, fontFamily: 'var(--font-mono)', letterSpacing: '0.1em',
+          textTransform: 'uppercase', color: '#6B7A90', marginBottom: 12,
+        }}>Understanding the Data</div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Score */}
+          <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid #1E2A3A' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#E6EDF3', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#22C55E', background: 'rgba(34,197,94,0.12)', borderRadius: 4, padding: '1px 6px' }}>SCORE</span>
+              Signal strength
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {[
+                { range: '70–80', label: 'Good setup', color: '#F59E0B' },
+                { range: '80–90', label: 'Strong setup', color: '#22C55E' },
+                { range: '90+',   label: 'Very high probability', color: '#3B82F6' },
+              ].map(r => (
+                <div key={r.range} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: r.color, minWidth: 36 }}>{r.range}</span>
+                  <span style={{ color: '#6B7A90' }}>→</span>
+                  <span style={{ color: '#9FB0C0' }}>{r.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Change % */}
+          <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid #1E2A3A' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#E6EDF3', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#9FB0C0', background: 'rgba(255,255,255,0.06)', borderRadius: 4, padding: '1px 6px' }}>CHANGE %</span>
+              Today&apos;s price move
+            </div>
+            <div style={{ display: 'flex', gap: 12, fontSize: 11 }}>
+              <span style={{ color: '#22C55E', fontWeight: 600 }}>+% up</span>
+              <span style={{ color: '#F43F5E', fontWeight: 600 }}>−% down</span>
+              <span style={{ color: '#6B7A90' }}>— shows current momentum</span>
+            </div>
+          </div>
+
+          {/* Direction */}
+          <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid #1E2A3A' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#E6EDF3', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#9FB0C0', background: 'rgba(255,255,255,0.06)', borderRadius: 4, padding: '1px 6px' }}>DIRECTION</span>
+              Expected move
+            </div>
+            <div style={{ display: 'flex', gap: 12, fontSize: 11 }}>
+              <span style={{ color: '#22C55E', fontWeight: 700 }}>▲ BULL</span>
+              <span style={{ color: '#6B7A90' }}>expect upward move</span>
+            </div>
+            <div style={{ display: 'flex', gap: 12, fontSize: 11, marginTop: 4 }}>
+              <span style={{ color: '#F43F5E', fontWeight: 700 }}>▼ BEAR</span>
+              <span style={{ color: '#6B7A90' }}>expect downward move</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <style>{`
