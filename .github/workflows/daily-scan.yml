@@ -58,7 +58,7 @@ jobs:
             Scanning NSE + BSE listed stocks...
             You will receive another email when the scan completes.
 
-            — GitHub Actions
+            
 
       - name: Run daily market scan
         id: scan
@@ -118,7 +118,7 @@ jobs:
 
             Results are now live on Trade Finder.
 
-            — GitHub Actions
+            
 
       - name: Send completion email (failure)
         if: failure()

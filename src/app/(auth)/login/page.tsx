@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -26,6 +26,14 @@ export default function LoginPage() {
   const [error, setError]       = useState('')
   const [loading, setLoading]   = useState(false)
   const router = useRouter()
+
+  // Show error for expired/invalid auth links
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('error') === 'auth') {
+      setError('This link has expired or is invalid. Please request a new one.')
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
