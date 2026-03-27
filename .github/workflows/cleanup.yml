@@ -1,0 +1,24 @@
+name: Cleanup Old Trade Data
+
+# Manual trigger only — run whenever you want from GitHub Actions tab
+on:
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete trade_finder_results older than 10 days
+        run: |
+          response=$(curl -s -o /tmp/cleanup_response.json -w "%{http_code}" \
+            -X DELETE "${{ secrets.SITE_URL }}/api/admin/cleanup" \
+            -H "x-cleanup-secret: ${{ secrets.CLEANUP_SECRET }}")
+
+          cat /tmp/cleanup_response.json
+          echo ""
+          echo "HTTP Status: $response"
+
+          if [ "$response" != "200" ]; then
+            echo "Cleanup failed with status $response"
+            exit 1
+          fi
