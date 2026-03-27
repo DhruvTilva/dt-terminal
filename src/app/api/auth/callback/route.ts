@@ -8,10 +8,19 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
       if (type === 'recovery') return NextResponse.redirect(`${origin}/auth/reset-password`)
-      return NextResponse.redirect(`${origin}/auth/success`)
+      if (type === 'signup')   return NextResponse.redirect(`${origin}/auth/success`)
+
+      // Google OAuth — ensure profile exists then go to dashboard
+      if (data.user) {
+        await supabase.from('profiles').upsert({
+          id:   data.user.id,
+          name: data.user.user_metadata?.full_name ?? data.user.email?.split('@')[0] ?? 'Trader',
+        }, { onConflict: 'id', ignoreDuplicates: true })
+      }
+      return NextResponse.redirect(`${origin}/dashboard`)
     }
   }
 
