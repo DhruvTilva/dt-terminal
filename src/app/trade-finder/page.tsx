@@ -438,6 +438,7 @@ export default function TradeFinderPage() {
   const [expanded, setExpanded]           = useState<string | null>(null)
   const [infoOpen, setInfoOpen]           = useState<string | null>(null)
   const [mlPredictions, setMlPredictions] = useState<Record<string, MLPrediction>>({})
+  const [winRates, setWinRates]           = useState<Record<string, number | null>>({})
 
   // Auth guard — redirect guests to login
   useEffect(() => {
@@ -474,6 +475,11 @@ export default function TradeFinderPage() {
     fetch('/api/ml-predictions')
       .then(r => r.json())
       .then((map: Record<string, MLPrediction>) => setMlPredictions(map))
+      .catch(() => {/* silent fail */})
+    // Fetch strategy win rates silently
+    fetch('/api/strategy-win-rates')
+      .then(r => r.json())
+      .then((rates: Record<string, number | null>) => setWinRates(rates))
       .catch(() => {/* silent fail */})
   }, [fetchResults])
 
@@ -584,22 +590,38 @@ export default function TradeFinderPage() {
                 <button
                   onClick={() => { setActiveTab(s.key); setExpanded(null) }}
                   style={{
-                    padding: '8px 4px 8px 16px', fontSize: 12, fontWeight: 600,
+                    padding: '7px 4px 7px 16px', fontSize: 12, fontWeight: 600,
                     border: 'none', background: 'transparent',
                     color: isActive ? s.color : '#6B7A90',
                     cursor: 'pointer', whiteSpace: 'nowrap',
-                    display: 'flex', alignItems: 'center', gap: 4,
+                    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1,
                   }}
                 >
-                  {s.label}
-                  {count > 0 && (
-                    <span style={{
-                      fontSize: 10, fontWeight: 700,
-                      color: isActive ? s.color : '#354558',
-                      background: isActive ? `${s.color}1A` : '#1A2336',
-                      borderRadius: 10, padding: '1px 6px',
-                    }}>{count}</span>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {s.label}
+                    {count > 0 && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 700,
+                        color: isActive ? s.color : '#354558',
+                        background: isActive ? `${s.color}1A` : '#1A2336',
+                        borderRadius: 10, padding: '1px 6px',
+                      }}>{count}</span>
+                    )}
+                  </div>
+                  {(() => {
+                    const wr = winRates[s.key]
+                    if (wr === null || wr === undefined) return null
+                    const wrColor = wr >= 65 ? '#22C55E' : wr >= 55 ? '#F59E0B' : '#F43F5E'
+                    return (
+                      <span style={{
+                        fontSize: 9, fontFamily: 'var(--font-mono)', fontWeight: 600,
+                        color: isActive ? wrColor : '#354558',
+                        letterSpacing: '0.03em',
+                      }}>
+                        {wr}% win · 30d
+                      </span>
+                    )
+                  })()}
                 </button>
                 {/* ⓘ Info button */}
                 <button
