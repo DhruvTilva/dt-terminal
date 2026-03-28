@@ -31,14 +31,21 @@
 - Cleanup job: `.github/workflows/cleanup-visitors.yml` → keeps 30 days, delete older
 - Heartbeat: client fires max once per 5 min → low write volume even with active users
 
+### ml_predictions
+- Growth rate: ~400 rows/day (one per signal stock per day)
+- Each row: ~200 bytes
+- No cleanup needed — old predictions are naturally overwritten by upsert on same `prediction_date + stock_symbol`
+- Retains all historical data for accuracy tracking — at 400 rows/day: ~5 MB/year — negligible
+
 ### Overall DB usage (approximate steady-state)
 | Table | Approx Size |
 |-------|-------------|
 | trade_finder_results (10-day cap) | ~27 MB |
 | visitor_logs (30-day rolling) | < 5 MB |
+| ml_predictions (no cap, grows slowly) | < 5 MB/year |
 | profiles | < 1 MB |
 | watchlist / bookmarks | < 2 MB |
-| **Total** | **~35 MB** — well within 500 MB free limit |
+| **Total** | **~40 MB** — well within 500 MB free limit |
 
 ---
 
@@ -52,6 +59,7 @@
 | Yahoo Finance rate limiting (429 errors) | Add caching layer or switch data source |
 | > 400MB DB storage | Run cleanup jobs + plan Supabase upgrade |
 | trade_finder_results cleanup not run in 2+ weeks | Run `.github/workflows/cleanup.yml` manually |
+| ML script GitHub Actions minutes exceeded | Free tier = 2,000 min/month; script runs ~2 min/day = 40 min/month — no risk |
 
 ---
 

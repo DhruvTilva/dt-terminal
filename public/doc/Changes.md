@@ -338,6 +338,53 @@ File: `next.config.ts`
 
 ---
 
+## AI / ML FEATURES
+
+### AI Market Pulse (dashboard center column)
+| What | File | Note |
+|------|------|------|
+| Opening line templates (by NIFTY %) | `src/lib/marketPulse.ts` | lines 46–57 |
+| Movers line (top gainer/loser sentence) | `src/lib/marketPulse.ts` | lines 60–72 |
+| News line | `src/lib/marketPulse.ts` | line 75 |
+| Pulse card UI (colors, layout) | `src/components/dashboard/MarketPulse.tsx` | full file |
+| Where pulse appears in dashboard | `src/app/dashboard/page.tsx` | `<MarketPulse />` above `<OpportunityCard />` |
+
+### Strategy Win Rate (Trade Finder tabs)
+| What | File | Note |
+|------|------|------|
+| Win rate calculation logic | `src/app/api/strategy-win-rates/route.ts` | fallback raw query |
+| Minimum data points required | `src/app/api/strategy-win-rates/route.ts` | `total >= 10` |
+| Win rate subtitle in tab | `src/app/trade-finder/page.tsx` | `winRates[s.key]` IIFE in tab button |
+| Win rate state + fetch | `src/app/trade-finder/page.tsx` | `winRates` useState + fetch in useEffect |
+
+### ML Prediction (nightly Python script)
+| What | File | Note |
+|------|------|------|
+| Lookback days (30) | `scripts/predict_trend.py` | `LOOKBACK_DAYS = 30` |
+| Min training rows (20) | `scripts/predict_trend.py` | `MIN_TRAINING_ROWS = 20` |
+| Strategy weights | `scripts/predict_trend.py` | `STRATEGY_WEIGHT` dict |
+| Cron schedule (8 PM IST) | `.github/workflows/ml-predict.yml` | `'30 14 * * 1-5'` |
+| ML predictions API | `src/app/api/ml-predictions/route.ts` | returns symbol→prediction map |
+| AI badge in Trade Finder rows | `src/app/trade-finder/page.tsx` | `mlPredictions[row.stock_symbol]` |
+
+### ML Accuracy Tracker
+| What | File | Note |
+|------|------|------|
+| Grading logic (Python) | `scripts/predict_trend.py` | `grade_yesterday_predictions()` |
+| SQL migration (columns + view) | `supabase/migrations/003_ml_accuracy.sql` | `was_correct`, `actual_direction`, `ml_daily_accuracy` view |
+| Accuracy API route | `src/app/api/ml-accuracy/route.ts` | last 14 days + 7-day avg |
+| Accuracy page | `src/app/trade-finder/ml-accuracy/page.tsx` | `/trade-finder/ml-accuracy` |
+| AI Accuracy button in Trade Finder | `src/app/trade-finder/page.tsx` | `◎ AI Accuracy` button in scan info bar |
+| Color thresholds (≥65/55/<55) | `src/app/trade-finder/ml-accuracy/page.tsx` | `AccuracyBar` component |
+
+### Home Page Feature Cards
+| What | File | Note |
+|------|------|------|
+| ML Prediction card (4th card, purple) | `src/app/page.tsx` | color `#A78BFA` |
+| AI Prediction in guest popup | `src/components/ui/GuestLoginPopup.tsx` | `highlight: true` row |
+
+---
+
 ## QUICK FIND CHEATSHEET
 
 | I want to change… | Go to |
@@ -359,3 +406,7 @@ File: `next.config.ts`
 | Trade cleanup retention | `src/app/api/admin/cleanup/route.ts` (setDate - 10) |
 | Visitor log retention | `src/app/api/admin/cleanup-visitors/route.ts` (setDate - 30) |
 | Admin analytics "Active Now" window | `src/app/api/admin/analytics/route.ts` (5 * 60 * 1000) |
+| Market Pulse templates | `src/lib/marketPulse.ts` lines 46–75 |
+| Strategy win rate min data points | `src/app/api/strategy-win-rates/route.ts` (`total >= 10`) |
+| ML prediction lookback | `scripts/predict_trend.py` (`LOOKBACK_DAYS`) |
+| ML cron schedule | `.github/workflows/ml-predict.yml` (cron line) |

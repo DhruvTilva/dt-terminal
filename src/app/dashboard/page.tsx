@@ -6,6 +6,7 @@ import WatchlistPanel from '@/components/watchlist/WatchlistPanel'
 import NewsFeed from '@/components/news/NewsFeed'
 import NewsDetail from '@/components/news/NewsDetail'
 import OpportunityCard from '@/components/dashboard/OpportunityCard'
+import MarketPulse from '@/components/dashboard/MarketPulse'
 import StockTable from '@/components/stocks/StockTable'
 import { useMarketData } from '@/hooks/useMarketData'
 import { useStore } from '@/store/useStore'
@@ -184,6 +185,7 @@ export default function DashboardPage() {
 
           {/* Scrollable content */}
           <div className="flex-1 min-h-0 overflow-y-auto">
+            <MarketPulse />
             <OpportunityCard />
             <NewsFeed />
             <StockTable />

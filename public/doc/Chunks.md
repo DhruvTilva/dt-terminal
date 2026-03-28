@@ -79,6 +79,7 @@ src/
 │   ├── dashboard/
 │   │   ├── MarketStats.tsx      ← Right panel default: indices, breadth, signals, gainers/losers
 │   │   ├── MarketTicker.tsx     ← (alternate ticker component)
+│   │   ├── MarketPulse.tsx      ← AI-style market summary card (top of center column)
 │   │   └── OpportunityCard.tsx  ← Trade signals section (collapsible)
 │   ├── news/
 │   │   ├── NewsFeed.tsx         ← Center feed: filter tabs, feed rows, NEW highlight
@@ -95,6 +96,7 @@ src/
 │   ├── news.ts                  ← RSS parser + impact scoring + sentiment analysis
 │   ├── intelligence.ts          ← Trade signal detection (breakout, gap, volume, news)
 │   ├── trade-strategies.ts      ← Morning trend strategies for Trade Finder
+│   ├── marketPulse.ts           ← AI Market Pulse generator (template-based, zero API cost)
 │   └── supabase/
 │       ├── client.ts            ← Browser Supabase client
 │       ├── server.ts            ← Server Supabase client
@@ -109,12 +111,23 @@ public/
 └── doc/
     ├── CLAUDE.md                ← This file
     ├── Changes.md               ← Quick file/line reference
-    └── Scale.md                 ← Scaling guide
+    ├── Scale.md                 ← Scaling guide
+    └── inter.md                 ← Interview preparation guide
+
+scripts/
+└── predict_trend.py             ← Nightly ML prediction + accuracy grading (Python)
+
+supabase/
+└── migrations/
+    ├── 001_*.sql                ← Core tables
+    ├── 002_*.sql                ← Trade finder tables
+    └── 003_ml_accuracy.sql      ← was_correct + actual_direction columns + ml_daily_accuracy view
 
 .github/
 └── workflows/
     ├── cleanup.yml              ← Manual: delete trade_finder_results > 10 days
-    └── cleanup-visitors.yml     ← Manual: delete visitor_logs > 30 days
+    ├── cleanup-visitors.yml     ← Manual: delete visitor_logs > 30 days
+    └── ml-predict.yml           ← Nightly 8 PM IST: run predict_trend.py + send completion email
 ```
 
 ---
@@ -202,9 +215,10 @@ html { h-full }
 ```
 ┌──────────────┬──────────────────────────┬────────────────┐
 │ LEFT 220px   │ CENTER (flex-1)           │ RIGHT 300px    │
-│ Watchlist    │ OpportunityCard           │ NewsDetail     │
-│              │ NewsFeed                  │  OR            │
-│              │ StockTable                │ MarketStats    │
+│ Watchlist    │ MarketPulse (AI summary)  │ NewsDetail     │
+│              │ OpportunityCard           │  OR            │
+│              │ NewsFeed                  │ MarketStats    │
+│              │ StockTable                │                │
 └──────────────┴──────────────────────────┴────────────────┘
 ```
 - Desktop: `hidden lg:flex` for side panels (always visible)
@@ -309,6 +323,13 @@ After each refresh (not the first), `useMarketData` compares new news IDs agains
 | `/api/bookmarks` | GET/POST/DELETE | Requires auth |
 | `/api/visitor/track` | POST | Session tracking (no auth needed) |
 | `/api/auth/callback` | GET | Supabase auth callback |
+
+### ML / AI Routes
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/ml-predictions` | GET | Returns symbol→{direction,confidence} map for today |
+| `/api/ml-accuracy` | GET | Last 14 days accuracy + 7-day rolling avg from `ml_daily_accuracy` view |
+| `/api/strategy-win-rates` | GET | Per-strategy 30-day win rate from `trade_finder_results` + `ml_predictions` join |
 
 ### Admin Routes (requires `is_admin = true` in profiles)
 | Route | Method | Description |
@@ -468,17 +489,25 @@ CLEANUP_SECRET=your-cleanup-secret-here
 
 ## 17. GitHub Actions Workflows
 
-Both workflows are **manual-trigger only** (`workflow_dispatch`). Run from GitHub → Actions tab → select workflow → Run workflow.
-
-### cleanup.yml — Trade Data Cleanup
+### cleanup.yml — Trade Data Cleanup (manual)
 - Calls `DELETE /api/admin/cleanup`
 - Deletes `trade_finder_results` older than **10 days**
 - Required GitHub secrets: `SITE_URL`, `CLEANUP_SECRET`
 
-### cleanup-visitors.yml — Visitor Logs Cleanup
+### cleanup-visitors.yml — Visitor Logs Cleanup (manual)
 - Calls `DELETE /api/admin/cleanup-visitors`
 - Deletes `visitor_logs` older than **30 days**
 - Required GitHub secrets: `SITE_URL`, `CLEANUP_SECRET`
+
+### ml-predict.yml — Nightly ML Prediction (automated)
+- **Schedule**: `30 14 * * 1-5` = 8:00 PM IST weekdays (after market close)
+- Runs `scripts/predict_trend.py` (Python 3.11)
+- Step 1: Grades yesterday's predictions (`was_correct` update in `ml_predictions`)
+- Step 2: Trains Logistic Regression on last 30 days of `trade_finder_results`
+- Step 3: Predicts today's signals and upserts to `ml_predictions`
+- Sends completion email with model accuracy, training rows, symbols count
+- Required GitHub secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_TO`
+- Silent exit (green CI) if not enough data yet (`MIN_TRAINING_ROWS = 20`)
 
 ---
 
@@ -534,6 +563,30 @@ CREATE TABLE visitor_logs (
 CREATE INDEX idx_visitor_first  ON visitor_logs (first_visit_at);
 CREATE INDEX idx_visitor_active ON visitor_logs (last_active_at);
 -- Cleaned up via /api/admin/cleanup-visitors (keep last 30 days)
+
+-- ── ML Predictions ───────────────────────────────────────────────
+
+CREATE TABLE ml_predictions (
+  prediction_date     date NOT NULL,
+  stock_symbol        text NOT NULL,
+  predicted_direction text CHECK (predicted_direction IN ('bullish', 'bearish')),
+  confidence          numeric,
+  model_accuracy      numeric,
+  was_correct         boolean,          -- NULL = not graded yet
+  actual_direction    text CHECK (actual_direction IN ('bullish', 'bearish')),
+  PRIMARY KEY (prediction_date, stock_symbol)
+);
+
+-- Aggregated daily accuracy view
+CREATE OR REPLACE VIEW ml_daily_accuracy AS
+SELECT
+  prediction_date,
+  COUNT(*) AS total_predictions,
+  COUNT(*) FILTER (WHERE was_correct = true) AS correct_predictions,
+  ROUND(COUNT(*) FILTER (WHERE was_correct = true)::numeric / NULLIF(COUNT(*), 0) * 100, 1) AS accuracy_pct
+FROM ml_predictions
+WHERE was_correct IS NOT NULL
+GROUP BY prediction_date ORDER BY prediction_date DESC;
 
 -- ── RLS Policies ──────────────────────────────────────────────────
 
