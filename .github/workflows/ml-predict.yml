@@ -1,0 +1,107 @@
+name: Nightly ML Trend Prediction
+
+on:
+  # Runs at 8:00 PM IST = 2:30 PM UTC, after market close
+  schedule:
+    - cron: '30 14 * * 1-5'   # Mon–Fri only (market days)
+
+  # Also allow manual trigger from GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: scripts/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Set run metadata
+        id: meta
+        run: |
+          echo "run_date=$(TZ='Asia/Kolkata' date '+%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "start_time=$(TZ='Asia/Kolkata' date '+%d %b %Y, %I:%M %p IST')" >> $GITHUB_OUTPUT
+
+      - name: Run ML prediction script
+        id: predict
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/predict_trend.py 2>&1 | tee /tmp/ml_output.txt
+
+      - name: Extract prediction stats
+        id: stats
+        if: always()
+        run: |
+          OUTPUT=$(cat /tmp/ml_output.txt 2>/dev/null || echo "No output")
+          ACCURACY=$(echo "$OUTPUT" | grep -oP 'Model accuracy: \K[0-9.]+(?=%)' | tail -1 || echo "N/A")
+          SAVED=$(echo "$OUTPUT" | grep -oP 'Saved \K[0-9]+(?= predictions)' | tail -1 || echo "0")
+          TRAINING=$(echo "$OUTPUT" | grep -oP 'Training rows: \K[0-9]+' | tail -1 || echo "N/A")
+          SYMBOLS=$(echo "$OUTPUT" | grep -oP "Today's unique symbols: \K[0-9]+" | tail -1 || echo "N/A")
+          echo "accuracy=$ACCURACY" >> $GITHUB_OUTPUT
+          echo "saved=$SAVED" >> $GITHUB_OUTPUT
+          echo "training=$TRAINING" >> $GITHUB_OUTPUT
+          echo "symbols=$SYMBOLS" >> $GITHUB_OUTPUT
+          echo "end_time=$(TZ='Asia/Kolkata' date '+%d %b %Y, %I:%M %p IST')" >> $GITHUB_OUTPUT
+
+      - name: Send completion email (success)
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          to: ${{ secrets.MAIL_USERNAME }}
+          from: DT's Terminal <${{ secrets.MAIL_USERNAME }}>
+          subject: "✅ DT's Terminal — ML Predictions Ready (${{ steps.meta.outputs.run_date }})"
+          body: |
+            DT's Terminal — Nightly ML Trend Prediction
+
+            Status          : ✅ COMPLETED
+            Run Date        : ${{ steps.meta.outputs.run_date }}
+            Finished At     : ${{ steps.stats.outputs.end_time }}
+            Trigger         : ${{ github.event_name == 'workflow_dispatch' && 'Manual' || 'Scheduled (8:00 PM IST)' }}
+
+            ── Model Results ────────────────────
+            Training Rows   : ${{ steps.stats.outputs.training }}
+            Symbols Today   : ${{ steps.stats.outputs.symbols }}
+            Predictions Saved: ${{ steps.stats.outputs.saved }}
+            Model Accuracy  : ${{ steps.stats.outputs.accuracy }}%
+
+            AI predictions are now live on Trade Finder.
+
+
+
+      - name: Send completion email (failure)
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          to: ${{ secrets.MAIL_USERNAME }}
+          from: DT's Terminal <${{ secrets.MAIL_USERNAME }}>
+          subject: "❌ DT's Terminal — ML Prediction FAILED (${{ steps.meta.outputs.run_date }})"
+          body: |
+            DT's Terminal — Nightly ML Trend Prediction
+
+            Status     : ❌ FAILED
+            Run Date   : ${{ steps.meta.outputs.run_date }}
+            Failed At  : ${{ steps.stats.outputs.end_time }}
+
+            Check GitHub Actions logs for details:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+

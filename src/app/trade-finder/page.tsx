@@ -7,6 +7,12 @@ import { createClient } from '@/lib/supabase/client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface MLPrediction {
+  direction: string
+  confidence: number
+  accuracy: number
+}
+
 interface TradeResult {
   id: string
   stock_symbol: string
@@ -78,6 +84,22 @@ function fmtChange(n: number): string {
 
 // ─── Components ───────────────────────────────────────────────────────────────
 
+function MLBadge({ prediction }: { prediction: MLPrediction | undefined }) {
+  if (!prediction) return <span />
+  const isUp = prediction.direction === 'bullish'
+  const color = isUp ? '#22C55E' : '#F43F5E'
+  return (
+    <span style={{
+      fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
+      color, background: `${color}15`, borderRadius: 4,
+      padding: '2px 5px', whiteSpace: 'nowrap',
+      display: 'inline-block', textAlign: 'center',
+    }}>
+      {isUp ? '↑' : '↓'} {Math.round(prediction.confidence)}%
+    </span>
+  )
+}
+
 function ScoreBadge({ score }: { score: number }) {
   const color = score >= 85 ? '#22C55E' : score >= 70 ? '#F59E0B' : '#9FB0C0'
   return (
@@ -102,11 +124,12 @@ function DirectionChip({ direction }: { direction: 'bullish' | 'bearish' }) {
 }
 
 function ResultRow({
-  result, isExpanded, onToggle,
+  result, isExpanded, onToggle, mlPrediction,
 }: {
   result: TradeResult
   isExpanded: boolean
   onToggle: () => void
+  mlPrediction: MLPrediction | undefined
 }) {
   const changeColor = result.change_percent >= 0 ? '#22C55E' : '#F43F5E'
 
@@ -125,7 +148,7 @@ function ResultRow({
       {/* Main row */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '28px 90px 1fr 80px 70px 52px 42px',
+        gridTemplateColumns: '28px 90px 1fr 80px 70px 52px 42px 58px',
         alignItems: 'center', gap: 8, padding: '10px 16px',
       }}>
         {/* Rank */}
@@ -155,6 +178,8 @@ function ResultRow({
         <DirectionChip direction={result.direction} />
         {/* Score */}
         <ScoreBadge score={result.score} />
+        {/* ML Prediction */}
+        <MLBadge prediction={mlPrediction} />
       </div>
 
       {/* Expanded reason */}
@@ -185,46 +210,54 @@ function InfoPopup({ strategyKey, onClose }: { strategyKey: string; onClose: () 
     <div
       ref={overlayRef}
       onClick={e => { if (e.target === overlayRef.current) onClose() }}
+      className="info-overlay"
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
         background: 'rgba(11,18,32,0.75)', backdropFilter: 'blur(3px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '16px',
+        display: 'flex', justifyContent: 'center',
         animation: 'fadeIn 0.15s ease',
       }}
     >
-      <div style={{
-        background: '#121A2B',
-        border: `1px solid ${color}40`,
-        boxShadow: `0 0 32px ${color}18, 0 8px 40px rgba(0,0,0,0.5)`,
-        borderRadius: 14, padding: '24px', maxWidth: 380, width: '100%',
-        animation: 'scaleIn 0.15s ease',
-        position: 'relative',
-      }}>
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          style={{
-            position: 'absolute', top: 12, right: 12,
-            background: 'none', border: 'none', cursor: 'pointer',
-            color: '#6B7A90', fontSize: 16, lineHeight: 1,
-            padding: '4px 6px', borderRadius: 4,
-          }}
-          onMouseEnter={e => (e.currentTarget.style.color = '#E6EDF3')}
-          onMouseLeave={e => (e.currentTarget.style.color = '#6B7A90')}
-        >✕</button>
-
-        {/* Title */}
+      <div
+        className="info-panel"
+        style={{
+          background: '#121A2B',
+          border: `1px solid ${color}40`,
+          boxShadow: `0 0 32px ${color}18, 0 8px 40px rgba(0,0,0,0.5)`,
+          width: '100%', maxWidth: 460,
+          display: 'flex', flexDirection: 'column',
+        }}
+      >
+        {/* Sticky header */}
         <div style={{
-          fontSize: 10, fontFamily: 'var(--font-mono)', letterSpacing: '0.1em',
-          textTransform: 'uppercase', color, marginBottom: 8,
-        }}>Filter Logic</div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#E6EDF3', marginBottom: 14, paddingRight: 24 }}>
-          {info.title}
+          padding: '16px 20px 12px', flexShrink: 0,
+          borderBottom: `1px solid ${color}25`,
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8,
+        }}>
+          <div>
+            <div style={{
+              fontSize: 10, fontFamily: 'var(--font-mono)', letterSpacing: '0.1em',
+              textTransform: 'uppercase', color, marginBottom: 4,
+            }}>Filter Logic</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#E6EDF3' }}>
+              {info.title}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              flexShrink: 0, marginTop: 2,
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: '#6B7A90', fontSize: 16, lineHeight: 1,
+              padding: '4px 6px', borderRadius: 4,
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#E6EDF3')}
+            onMouseLeave={e => (e.currentTarget.style.color = '#6B7A90')}
+          >✕</button>
         </div>
 
-        {/* Divider */}
-        <div style={{ height: 1, background: '#263042', marginBottom: 14 }} />
+        {/* Scrollable body */}
+        <div className="info-panel-body" style={{ overflowY: 'auto', padding: '16px 20px 24px', flex: 1 }}>
 
         {/* Description */}
         <p style={{ fontSize: 13, color: '#9FB0C0', lineHeight: 1.7, margin: 0 }}>
@@ -308,12 +341,63 @@ function InfoPopup({ strategyKey, onClose }: { strategyKey: string; onClose: () 
               <span style={{ color: '#6B7A90' }}>expect downward move</span>
             </div>
           </div>
+
+          {/* AI Prediction */}
+          <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.2)' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#E6EDF3', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#3B82F6', background: 'rgba(59,130,246,0.15)', borderRadius: 4, padding: '1px 6px' }}>AI</span>
+              ML next-day prediction
+            </div>
+            <p style={{ fontSize: 11, color: '#9FB0C0', lineHeight: 1.6, margin: '0 0 8px' }}>
+              Trained nightly on 30 days of signal history. Predicts whether the stock is likely to move up or down the next day.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {[
+                { badge: '↑ 85%', color: '#22C55E', label: 'bullish — high confidence' },
+                { badge: '↓ 72%', color: '#F43F5E', label: 'bearish — medium confidence' },
+                { badge: '—',     color: '#6B7A90', label: 'no prediction yet today' },
+              ].map(r => (
+                <div key={r.badge} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11 }}>
+                  <span style={{
+                    fontFamily: 'var(--font-mono)', fontWeight: 700, color: r.color,
+                    background: `${r.color}15`, borderRadius: 4, padding: '1px 5px', minWidth: 42, textAlign: 'center',
+                  }}>{r.badge}</span>
+                  <span style={{ color: '#6B7A90' }}>→</span>
+                  <span style={{ color: '#9FB0C0' }}>{r.label}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{
+              marginTop: 8, fontSize: 10, color: '#3B82F6', fontFamily: 'var(--font-mono)',
+              letterSpacing: '0.03em',
+            }}>
+              Use as a secondary signal — not a trade guarantee.
+            </div>
+          </div>
         </div>
+
+        </div>{/* end scrollable body */}
       </div>
 
       <style>{`
-        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+        @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+        @keyframes scaleIn { from { transform: scale(0.96); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+
+        /* Mobile — bottom sheet */
+        @media (max-width: 600px) {
+          .info-overlay { align-items: flex-end; padding: 0; }
+          .info-panel   { border-radius: 14px 14px 0 0; max-height: 88dvh; animation: slideUp 0.22s ease; }
+        }
+        /* Desktop — centered modal */
+        @media (min-width: 601px) {
+          .info-overlay { align-items: center; padding: 24px; }
+          .info-panel   { border-radius: 14px; max-height: 85dvh; animation: scaleIn 0.18s ease; }
+        }
+
+        .info-panel-body::-webkit-scrollbar { width: 4px; }
+        .info-panel-body::-webkit-scrollbar-track { background: transparent; }
+        .info-panel-body::-webkit-scrollbar-thumb { background: #263042; border-radius: 4px; }
       `}</style>
     </div>
   )
@@ -346,13 +430,14 @@ function EmptyState({ scanAvailable }: { scanAvailable: boolean }) {
 
 export default function TradeFinderPage() {
   const router = useRouter()
-  const [data, setData]           = useState<ResultsPayload | null>(null)
-  const [loading, setLoading]     = useState(true)
-  const [error, setError]         = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState('strict_morning')
-  const [direction, setDirection] = useState<'all' | 'bullish' | 'bearish'>('all')
-  const [expanded, setExpanded]   = useState<string | null>(null)
-  const [infoOpen, setInfoOpen]   = useState<string | null>(null)
+  const [data, setData]                   = useState<ResultsPayload | null>(null)
+  const [loading, setLoading]             = useState(true)
+  const [error, setError]                 = useState<string | null>(null)
+  const [activeTab, setActiveTab]         = useState('strict_morning')
+  const [direction, setDirection]         = useState<'all' | 'bullish' | 'bearish'>('all')
+  const [expanded, setExpanded]           = useState<string | null>(null)
+  const [infoOpen, setInfoOpen]           = useState<string | null>(null)
+  const [mlPredictions, setMlPredictions] = useState<Record<string, MLPrediction>>({})
 
   // Auth guard — redirect guests to login
   useEffect(() => {
@@ -383,7 +468,14 @@ export default function TradeFinderPage() {
     }
   }, [])
 
-  useEffect(() => { fetchResults() }, [fetchResults])
+  useEffect(() => {
+    fetchResults()
+    // Fetch ML predictions silently — if table not ready yet, returns {}
+    fetch('/api/ml-predictions')
+      .then(r => r.json())
+      .then((map: Record<string, MLPrediction>) => setMlPredictions(map))
+      .catch(() => {/* silent fail */})
+  }, [fetchResults])
 
   const allResults: TradeResult[] = data?.results?.[activeTab] ?? []
   const filtered = direction === 'all'
@@ -537,15 +629,15 @@ export default function TradeFinderPage() {
             {filtered.length > 0 && (
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: '28px 90px 1fr 80px 70px 52px 42px',
+                gridTemplateColumns: '28px 90px 1fr 80px 70px 52px 42px 58px',
                 gap: 8, padding: '8px 16px',
                 borderBottom: '1px solid #1A2336',
                 background: '#121A2B',
               }}>
-                {['#', 'Symbol', 'Name / Signal', 'Price', 'Change', 'Dir', 'Score'].map((h, i) => (
+                {['#', 'Symbol', 'Name / Signal', 'Price', 'Change', 'Dir', 'Score', 'AI'].map((h, i) => (
                   <span key={i} style={{
                     fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
-                    color: '#354558', fontFamily: 'var(--font-mono)',
+                    color: i === 7 ? '#3B82F6' : '#354558', fontFamily: 'var(--font-mono)',
                     textAlign: (i === 3 || i === 4) ? 'right' : 'left',
                   }}>{h}</span>
                 ))}
@@ -561,6 +653,7 @@ export default function TradeFinderPage() {
                     result={result}
                     isExpanded={expanded === result.id}
                     onToggle={() => setExpanded(expanded === result.id ? null : result.id)}
+                    mlPrediction={mlPredictions[result.stock_symbol]}
                   />
                 ))
             }
