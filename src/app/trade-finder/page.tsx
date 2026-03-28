@@ -549,6 +549,23 @@ export default function TradeFinderPage() {
             <span>Total signals: <span style={{ color: '#9FB0C0' }}>{data.totalSignals}</span></span>
             <span style={{ color: '#263042' }}>·</span>
             <span>Generated: <span style={{ color: '#9FB0C0' }}>{fmtDate(data.session.completedAt)}</span></span>
+
+            {/* AI Accuracy button */}
+            <button
+              onClick={() => router.push('/trade-finder/ml-accuracy')}
+              style={{
+                marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5,
+                background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.3)',
+                color: '#3B82F6', cursor: 'pointer', borderRadius: 5,
+                fontSize: 10, fontWeight: 700, padding: '3px 9px',
+                fontFamily: 'var(--font-mono)', letterSpacing: '0.05em',
+                textTransform: 'uppercase', whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(59,130,246,0.15)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(59,130,246,0.08)')}
+            >
+              ◎ AI Accuracy
+            </button>
           </div>
         )}
 

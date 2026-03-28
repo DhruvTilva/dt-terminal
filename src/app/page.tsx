@@ -151,6 +151,16 @@ export default function HomePage() {
               label: 'Trade Signals',
               desc: 'Scans all stocks through price, volume & breakout filters — surfaces ready-to-act setups instantly.',
             },
+            {
+              icon: (
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a10 10 0 1 0 10 10" /><path d="M12 6v6l4 2" /><circle cx="18" cy="6" r="3" fill="#A78BFA" stroke="none" /><path d="M16.5 4.5 18 6l1.5-1.5" stroke="#0B1220" strokeWidth="1.5" />
+                </svg>
+              ),
+              color: '#A78BFA',
+              label: 'ML Prediction',
+              desc: 'Nightly AI predicts next-day direction for signal stocks — with confidence % and auto-graded accuracy.',
+            },
           ].map(f => (
             <div key={f.label} className="feature-card text-left rounded-xl p-4 sm:p-5">
               <div

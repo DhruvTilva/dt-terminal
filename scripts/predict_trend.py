@@ -163,6 +163,81 @@ def train_and_predict(train_df: pd.DataFrame, today_df: pd.DataFrame):
     return results, accuracy
 
 
+# ── Grade yesterday's predictions ────────────────────────────────────────────
+
+def grade_yesterday_predictions():
+    """
+    Compare yesterday's ml_predictions against today's actual scan results.
+    Updates was_correct + actual_direction for each graded row.
+    Runs before training so accuracy data is always fresh.
+    """
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+
+    # Fetch yesterday's ungraded predictions
+    res = (
+        supabase.table("ml_predictions")
+        .select("stock_symbol, predicted_direction")
+        .eq("prediction_date", yesterday)
+        .is_("was_correct", "null")
+        .execute()
+    )
+    preds = res.data or []
+    if not preds:
+        print(f"No ungraded predictions found for {yesterday}. Skipping grading.")
+        return
+
+    symbols = [p["stock_symbol"] for p in preds]
+
+    # Fetch today's actual scan results for those symbols
+    res2 = (
+        supabase.table("trade_finder_results")
+        .select("stock_symbol, change_percent")
+        .eq("scan_date", date.today().isoformat())
+        .in_("stock_symbol", symbols)
+        .execute()
+    )
+    actuals = {row["stock_symbol"]: float(row["change_percent"] or 0) for row in (res2.data or [])}
+
+    if not actuals:
+        print(f"No today's scan data found to grade yesterday's predictions. Skipping.")
+        return
+
+    # Grade each prediction
+    correct = 0
+    updates = []
+    for p in preds:
+        sym = p["stock_symbol"]
+        if sym not in actuals:
+            continue  # today's scan didn't include this symbol
+        actual_change = actuals[sym]
+        actual_dir = "bullish" if actual_change > 0 else "bearish"
+        was_correct = (actual_dir == p["predicted_direction"])
+        updates.append({
+            "prediction_date": yesterday,
+            "stock_symbol": sym,
+            "predicted_direction": p["predicted_direction"],
+            "was_correct": was_correct,
+            "actual_direction": actual_dir,
+        })
+        if was_correct:
+            correct += 1
+
+    if not updates:
+        print("No symbols matched for grading.")
+        return
+
+    # Upsert grades back
+    batch_size = 500
+    for i in range(0, len(updates), batch_size):
+        supabase.table("ml_predictions").upsert(
+            updates[i : i + batch_size],
+            on_conflict="prediction_date,stock_symbol"
+        ).execute()
+
+    accuracy = round(correct / len(updates) * 100, 1)
+    print(f"Graded {yesterday}: {correct}/{len(updates)} correct = {accuracy}%")
+
+
 # ── Save predictions ──────────────────────────────────────────────────────────
 
 def save_predictions(predictions: list, pred_date: str):
@@ -205,6 +280,9 @@ def save_predictions(predictions: list, pred_date: str):
 def main():
     today = date.today().isoformat()
     print(f"=== DT's Terminal ML Prediction — {today} ===")
+
+    print("Grading yesterday's predictions...")
+    grade_yesterday_predictions()
 
     print("Fetching historical data...")
     df = fetch_historical_data()

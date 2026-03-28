@@ -11,6 +11,12 @@ const FEATURES = [
     desc: 'Smart latest opportunities across 7000+ stocks',
   },
   {
+    icon: '🤖',
+    label: 'AI Prediction',
+    desc: 'Nightly ML predicts next-day direction with confidence score',
+    highlight: true,
+  },
+  {
     icon: '📌',
     label: 'Personal Watchlist',
     desc: 'Track your favorite stocks with live prices',
@@ -158,8 +164,8 @@ export default function GuestLoginPopup() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 12,
-                  background: 'rgba(255,255,255,0.025)',
-                  border: '1px solid #263042',
+                  background: (f as { highlight?: boolean }).highlight ? 'rgba(167,139,250,0.06)' : 'rgba(255,255,255,0.025)',
+                  border: (f as { highlight?: boolean }).highlight ? '1px solid rgba(167,139,250,0.25)' : '1px solid #263042',
                   borderRadius: 10,
                   padding: '10px 12px',
                 }}
