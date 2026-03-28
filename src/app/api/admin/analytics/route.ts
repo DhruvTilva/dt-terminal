@@ -35,17 +35,41 @@ export async function GET() {
 
   const activeThreshold = new Date(Date.now() - 5 * 60 * 1000) // 5 minutes ago
 
-  const [totalRes, todayRes, activeRes] = await Promise.all([
+  const [totalRes, todayRes, activeRes, metaRes] = await Promise.all([
     client.from('visitor_logs').select('*', { count: 'exact', head: true }),
     client.from('visitor_logs').select('*', { count: 'exact', head: true })
       .gte('first_visit_at', todayStart.toISOString()),
     client.from('visitor_logs').select('*', { count: 'exact', head: true })
       .gte('last_active_at', activeThreshold.toISOString()),
+    client.from('visitor_logs').select('device_type, browser, country, page_path'),
   ])
 
+  // Compute breakdowns from metadata
+  const rows = (metaRes.data ?? []) as { device_type: string | null; browser: string | null; country: string | null; page_path: string | null }[]
+  const total = totalRes.count ?? 0
+
+  const mobileCount = rows.filter(r => r.device_type === 'mobile').length
+  const mobilePct   = total > 0 ? Math.round((mobileCount / total) * 100) : 0
+
+  const browserCount: Record<string, number> = {}
+  for (const r of rows) if (r.browser) browserCount[r.browser] = (browserCount[r.browser] ?? 0) + 1
+  const topBrowser = Object.entries(browserCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+
+  const countryCount: Record<string, number> = {}
+  for (const r of rows) if (r.country) countryCount[r.country] = (countryCount[r.country] ?? 0) + 1
+  const topCountry = Object.entries(countryCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+
+  const pageCount: Record<string, number> = {}
+  for (const r of rows) if (r.page_path) pageCount[r.page_path] = (pageCount[r.page_path] ?? 0) + 1
+  const topPage = Object.entries(pageCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+
   return NextResponse.json({
-    total:     totalRes.count  ?? 0,
+    total,
     today:     todayRes.count  ?? 0,
     activeNow: activeRes.count ?? 0,
+    mobilePct,
+    topBrowser,
+    topCountry,
+    topPage,
   })
 }

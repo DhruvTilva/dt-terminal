@@ -14,6 +14,18 @@ function generateUUID(): string {
   })
 }
 
+function getDeviceType(ua: string): 'mobile' | 'desktop' {
+  return /Mobile|Android|iPhone|iPad|iPod/i.test(ua) ? 'mobile' : 'desktop'
+}
+
+function getBrowser(ua: string): string {
+  if (ua.includes('Edg/'))                               return 'Edge'
+  if (ua.includes('Chrome/') && !ua.includes('Edg/'))   return 'Chrome'
+  if (ua.includes('Firefox/'))                           return 'Firefox'
+  if (ua.includes('Safari/') && ua.includes('Version/')) return 'Safari'
+  return 'Other'
+}
+
 export default function VisitorTracker() {
   useEffect(() => {
     async function track() {
@@ -38,10 +50,19 @@ export default function VisitorTracker() {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
 
+        const ua = navigator.userAgent
+
         await fetch('/api/visitor/track', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: sessionId, user_id: user?.id ?? null }),
+          body: JSON.stringify({
+            session_id:  sessionId,
+            user_id:     user?.id ?? null,
+            device_type: getDeviceType(ua),
+            browser:     getBrowser(ua),
+            page_path:   window.location.pathname,
+            referrer:    document.referrer || null,
+          }),
         })
 
         localStorage.setItem(LAST_TRACK_KEY, Date.now().toString())

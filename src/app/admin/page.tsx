@@ -17,6 +17,10 @@ type Analytics = {
   total: number
   today: number
   activeNow: number
+  mobilePct:  number | null
+  topBrowser: string | null
+  topCountry: string | null
+  topPage:    string | null
 }
 
 function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
@@ -200,6 +204,34 @@ export default function AdminPage() {
             <StatCard label="Today"          value={analytics?.today ?? 0}     color="#F59E0B" loading={analyticsLoading} />
             <StatCard label="Active Now"     value={analytics?.activeNow ?? 0} color="#22C55E" loading={analyticsLoading} />
           </div>
+
+          {/* Breakdown row */}
+          {!analyticsLoading && analytics && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+              {[
+                { label: 'Mobile', value: analytics.mobilePct !== null ? `${analytics.mobilePct}%` : '—', icon: '📱' },
+                { label: 'Browser', value: analytics.topBrowser ?? '—', icon: '🌐' },
+                { label: 'Country', value: analytics.topCountry ?? '—', icon: '🌍' },
+                { label: 'Top Page', value: analytics.topPage ?? '—', icon: '📄' },
+              ].map(item => (
+                <div key={item.label} style={{
+                  background: '#0B1220', border: '1px solid #263042',
+                  borderRadius: 6, padding: '7px 12px',
+                  display: 'flex', alignItems: 'center', gap: 7, flex: 1, minWidth: 120,
+                }}>
+                  <span style={{ fontSize: 13 }}>{item.icon}</span>
+                  <div>
+                    <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#354558', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                      {item.label}
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#9FB0C0', fontFamily: 'var(--font-mono)', marginTop: 1 }}>
+                      {item.value}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Controls */}
@@ -239,9 +271,9 @@ export default function AdminPage() {
         </div>
 
         {/* Table */}
-        <div style={{ background: '#121A2B', border: '1px solid #263042', borderRadius: 8, overflowX: 'auto' }}>
+        <div style={{ background: '#121A2B', border: '1px solid #263042', borderRadius: 8, overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 320px)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: '#121A2B' }}>
               <tr style={{ borderBottom: '1px solid #263042' }}>
                 {['Name', 'Email', 'Role', 'Status', 'Created', 'Admin', 'Blocked'].map(h => (
                   <th key={h} style={{

@@ -1,4 +1,15 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
+
+export const metadata: Metadata = {
+  title: "DT's Terminal — Free NSE/BSE Stock Scanner & AI Predictions",
+  description: "Free stock scanner for Indian traders. Get intraday & swing trade setups, AI-powered NSE/BSE predictions, live Nifty 50 data, and market signals — no subscription needed.",
+  openGraph: {
+    title: "DT's Terminal — Free NSE/BSE Stock Scanner & AI Predictions",
+    description: "Free stock scanner for Indian traders. AI predictions, intraday signals, swing setups — NSE/BSE. No login required.",
+    url: '/',
+  },
+}
 
 export default function HomePage() {
   return (
