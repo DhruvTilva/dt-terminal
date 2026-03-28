@@ -13,7 +13,7 @@ export function generateMarketPulse(
   if (stocks.length < 5) return null
 
   // ── Index data ────────────────────────────────────────────────────────────
-  const nifty = indices.find(i => i.symbol === '^NSEI' || i.name?.toLowerCase().includes('nifty 50'))
+  const nifty = indices.find(i => i.name?.toLowerCase().includes('nifty 50'))
   const niftyChange = nifty?.changePercent ?? null
 
   // ── Stock counts ──────────────────────────────────────────────────────────
@@ -34,7 +34,7 @@ export function generateMarketPulse(
   else if (advRatio <= 0.4) sentiment = 'bearish'
 
   // ── Top news headline ─────────────────────────────────────────────────────
-  const topNews = news.find(n => (n.impact === 'high' || n.score > 70))
+  const topNews = news.find(n => n.impact === 'high')
   const newsSnippet = topNews?.title
     ? topNews.title.length > 60
       ? topNews.title.slice(0, 57) + '…'
