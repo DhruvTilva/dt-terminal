@@ -1,16 +1,5 @@
 /**
  * Daily Market Scan — GitHub Actions Runner
- *
- * Runs directly in GitHub Actions (no Vercel timeout limit).
- * Fetches all NSE + BSE stocks, runs 5 strategies, writes to Supabase.
- *
- * Usage:
- *   npx tsx scripts/run-scan.ts
- *   npx tsx scripts/run-scan.ts --force   ← re-run even if today already completed
- *
- * Required env vars (set as GitHub repository secrets):
- *   NEXT_PUBLIC_SUPABASE_URL
- *   SUPABASE_SERVICE_ROLE_KEY
  */
 
 import { createClient } from '@supabase/supabase-js'

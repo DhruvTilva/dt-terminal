@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 DT's Terminal — Nightly ML Trend Prediction
 """
@@ -101,7 +100,6 @@ def build_dataset(df: pd.DataFrame):
     today_df = df[df["next_change"].isna()].copy()
 
     # For today's rows, keep only the highest-score row per symbol
-    # (a symbol may appear in multiple strategies)
     today_df = (
         today_df.sort_values("score", ascending=False)
         .drop_duplicates(subset=["stock_symbol"], keep="first")

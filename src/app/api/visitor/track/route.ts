@@ -10,8 +10,6 @@ function getAdminClient() {
 
 // POST /api/visitor/track
 // Body: { session_id, user_id?, device_type?, browser?, page_path?, referrer? }
-// - New session  → INSERT (stores all metadata)
-// - Heartbeat    → UPDATE last_active_at only (metadata doesn't change)
 export async function POST(request: NextRequest) {
   try {
     const { session_id, user_id, device_type, browser, page_path, referrer } = await request.json()

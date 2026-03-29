@@ -1,8 +1,3 @@
--- ──────────────────────────────────────────────────────────────────────────────
--- Trade Finder Tables
--- Run this in Supabase Dashboard → SQL Editor
--- ──────────────────────────────────────────────────────────────────────────────
-
 -- Scan session tracker (one row per market day)
 CREATE TABLE IF NOT EXISTS scan_sessions (
   id              uuid        DEFAULT gen_random_uuid() PRIMARY KEY,

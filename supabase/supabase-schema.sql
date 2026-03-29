@@ -1,5 +1,3 @@
--- Run this SQL in your Supabase SQL Editor to create the required tables
-
 -- Watchlist table
 CREATE TABLE IF NOT EXISTS watchlist (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,

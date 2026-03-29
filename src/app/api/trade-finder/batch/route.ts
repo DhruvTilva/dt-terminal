@@ -3,7 +3,6 @@ import { runTradeFinder } from '@/lib/trade-strategies'
 import { getSegmentStocks } from '@/lib/full-scan-universe'
 import type { FullScanSegment } from '@/lib/full-scan-universe'
 
-// Per-segment batch caches: segment → batchIndex → result
 const batchCache = new Map<string, { data: unknown; timestamp: number }>()
 const CACHE_TTL = 8 * 60 * 1000 // 8 minutes
 

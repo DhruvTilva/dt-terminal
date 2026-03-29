@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase/service'
 
-export const revalidate = 0 // Always fresh — data changes once per day
+export const revalidate = 0
 
 /**
  * GET /api/trade-finder/results

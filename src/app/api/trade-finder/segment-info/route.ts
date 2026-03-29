@@ -5,8 +5,7 @@ import type { FullScanSegment } from '@/lib/full-scan-universe'
 const BATCH_SIZE = 15
 
 /**
- * GET /api/trade-finder/segment-info?segment=large|mid|small
- * Returns stock count + batch count for a segment.
+ * GET /api/trade-finder/segment-info?segment=large|mid|small.
  */
 export async function GET(req: NextRequest) {
   const segment = req.nextUrl.searchParams.get('segment') as FullScanSegment | null

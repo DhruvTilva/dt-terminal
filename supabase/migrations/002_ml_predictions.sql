@@ -1,7 +1,3 @@
--- ── ML Predictions Table ──────────────────────────────────────────────────────
--- Stores nightly logistic regression predictions for each scanned stock.
--- Populated by scripts/predict_trend.py via GitHub Actions (nightly after market close).
-
 CREATE TABLE IF NOT EXISTS ml_predictions (
   id                 uuid          DEFAULT gen_random_uuid() PRIMARY KEY,
   prediction_date    date          NOT NULL,

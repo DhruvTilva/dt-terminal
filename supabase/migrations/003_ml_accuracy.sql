@@ -1,10 +1,3 @@
--- ── ML Prediction Accuracy Tracking ───────────────────────────────────────────
--- Adds grading columns to ml_predictions and a daily accuracy view.
--- Grading happens nightly in predict_trend.py before training:
---   was_correct  = NULL  → not yet graded (future prediction)
---   was_correct  = true  → predicted direction matched actual next-day move
---   was_correct  = false → prediction was wrong
-
 ALTER TABLE ml_predictions
   ADD COLUMN IF NOT EXISTS was_correct      boolean,
   ADD COLUMN IF NOT EXISTS actual_direction text CHECK (actual_direction IN ('bullish', 'bearish'));
