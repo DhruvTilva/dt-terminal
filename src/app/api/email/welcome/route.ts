@@ -29,29 +29,47 @@ export async function POST(request: NextRequest) {
 
       <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:16px 18px;margin-bottom:24px;">
         <p style="color:#8b949e;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 12px;">Where to start</p>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <div style="display:flex;align-items:flex-start;gap:10px;">
-            <span style="font-size:15px;margin-top:1px;">📊</span>
-            <div>
-              <p style="color:#f0f6fc;font-size:13px;font-weight:600;margin:0 0 2px;">Live Dashboard</p>
-              <p style="color:#8b949e;font-size:12px;margin:0;">Real-time Nifty 50, top movers, AI market pulse</p>
-            </div>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:10px;">
-            <span style="font-size:15px;margin-top:1px;">🔍</span>
-            <div>
-              <p style="color:#f0f6fc;font-size:13px;font-weight:600;margin:0 0 2px;">Trade Finder</p>
-              <p style="color:#8b949e;font-size:12px;margin:0;">Scan NSE stocks for intraday &amp; swing setups</p>
-            </div>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:10px;">
-            <span style="font-size:15px;margin-top:1px;">🤖</span>
-            <div>
-              <p style="color:#f0f6fc;font-size:13px;font-weight:600;margin:0 0 2px;">AI Predictions</p>
-              <p style="color:#8b949e;font-size:12px;margin:0;">Nightly ML predictions with confidence scores</p>
-            </div>
-          </div>
-        </div>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="padding-bottom:10px;">
+              <table cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="font-size:16px;padding-right:10px;vertical-align:top;">📊</td>
+                  <td>
+                    <p style="color:#f0f6fc;font-size:13px;font-weight:600;margin:0 0 2px;">Live Dashboard</p>
+                    <p style="color:#8b949e;font-size:12px;margin:0;">Real-time Nifty 50, top movers, AI market pulse</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding-bottom:10px;">
+              <table cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="font-size:16px;padding-right:10px;vertical-align:top;">🔍</td>
+                  <td>
+                    <p style="color:#f0f6fc;font-size:13px;font-weight:600;margin:0 0 2px;">Trade Finder</p>
+                    <p style="color:#8b949e;font-size:12px;margin:0;">Scan NSE stocks for intraday &amp; swing setups</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <table cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="font-size:16px;padding-right:10px;vertical-align:top;">🤖</td>
+                  <td>
+                    <p style="color:#f0f6fc;font-size:13px;font-weight:600;margin:0 0 2px;">AI Predictions</p>
+                    <p style="color:#8b949e;font-size:12px;margin:0;">Nightly ML predictions with confidence scores</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
       </div>
 
       <a href="${siteUrl}/dashboard"
@@ -94,11 +112,9 @@ export async function POST(request: NextRequest) {
       }),
     })
 
-    const body = await res.json().catch(() => ({}))
-    console.log('[welcome-email] status:', res.status, 'body:', JSON.stringify(body))
-    return NextResponse.json({ ok: res.ok, status: res.status, body })
-  } catch (err) {
-    console.log('[welcome-email] catch error:', err)
+    return NextResponse.json({ ok: res.ok })
+  } catch {
+    // Silent fail — never breaks user flow
     return NextResponse.json({ ok: false })
   }
 }
