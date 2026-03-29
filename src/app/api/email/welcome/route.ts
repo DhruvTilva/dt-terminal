@@ -87,16 +87,18 @@ export async function POST(request: NextRequest) {
         'api-key': apiKey,
       },
       body: JSON.stringify({
-        sender:      { name: "DT's Terminal", email: 'noreply@trade-central.vercel.app' },
+        sender:      { name: "DT's Terminal", email: process.env.BREVO_SENDER_EMAIL || 'tilvadhruv8@gmail.com' },
         to:          [{ email }],
         subject:     "Welcome to DT's Terminal 🔒",
         htmlContent: html,
       }),
     })
 
-    return NextResponse.json({ ok: res.ok })
-  } catch {
-    // Silent fail — never breaks user flow
+    const body = await res.json().catch(() => ({}))
+    console.log('[welcome-email] status:', res.status, 'body:', JSON.stringify(body))
+    return NextResponse.json({ ok: res.ok, status: res.status, body })
+  } catch (err) {
+    console.log('[welcome-email] catch error:', err)
     return NextResponse.json({ ok: false })
   }
 }
