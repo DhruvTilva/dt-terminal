@@ -70,7 +70,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div style={{ fontSize: 10.5, color: '#2D3E52', fontFamily: 'var(--font-mono)', letterSpacing: '0.05em' }}>
             NSE · BSE · NIFTY · SENSEX · BANKNIFTY
           </div>
-
+          <div style={{ fontSize: 10.5, color: '#2D3E52', fontFamily: 'var(--font-mono)', letterSpacing: '0.05em' }}>
+            ⚠️ Built to assist decisions, not make them for you. Always trade at your own risk.
+          </div>
         </div>
       </div>
 

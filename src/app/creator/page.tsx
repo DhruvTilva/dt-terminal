@@ -162,7 +162,9 @@ export default function CreatorPage() {
           <p className="text-center pb-6" style={{ fontSize: 11, color: '#354558', fontFamily: 'var(--font-mono)' }}>
             Built in India · For Indian traders · By DT
           </p>
-
+          <p className="text-center pb-6" style={{ fontSize: 11, color: '#354558', fontFamily: 'var(--font-mono)' }}>
+            ⚠️ Built to assist decisions, not make them for you. Always trade at your own risk.
+          </p>
         </div>
       </main>
     </div>
