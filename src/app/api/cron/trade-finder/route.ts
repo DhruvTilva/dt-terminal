@@ -34,6 +34,30 @@ function isMarketDay(): boolean {
   return day >= 1 && day <= 5
 }
 
+async function hasMarketDataToday(todayIST: string): Promise<boolean> {
+  // Fetch RELIANCE.NS 5m candles for today — if no candles for today's date, market was closed
+  try {
+    const res = await fetch(
+      'https://query1.finance.yahoo.com/v8/finance/chart/RELIANCE.NS?interval=5m&range=1d',
+      { signal: AbortSignal.timeout(10_000) }
+    )
+    if (!res.ok) return true // if fetch fails, don't block the cron
+
+    const json = await res.json()
+    const timestamps: number[] = json?.chart?.result?.[0]?.timestamp ?? []
+    if (timestamps.length === 0) return false
+
+    // Check if any timestamp falls on today's IST date
+    return timestamps.some(ts => {
+      const ist = new Date(ts * 1000 + 5.5 * 60 * 60 * 1000)
+      const d = `${ist.getUTCFullYear()}-${String(ist.getUTCMonth() + 1).padStart(2, '0')}-${String(ist.getUTCDate()).padStart(2, '0')}`
+      return d === todayIST
+    })
+  } catch {
+    return true // on error, don't block the cron
+  }
+}
+
 export async function GET(request: NextRequest) {
   // ── Auth ────────────────────────────────────────────────────────────────────
   const authHeader = request.headers.get('authorization')
@@ -44,7 +68,7 @@ export async function GET(request: NextRequest) {
   const scanDate  = getTodayIST()
   const isForced  = request.nextUrl.searchParams.get('force') === '1'
 
-  // ── Market day check ────────────────────────────────────────────────────────
+  // ── Market day check (weekday) ──────────────────────────────────────────────
   if (!isMarketDay() && !isForced) {
     console.info(`[cron/trade-finder] Skipping — not a market day (${scanDate})`)
     return NextResponse.json({
@@ -52,6 +76,19 @@ export async function GET(request: NextRequest) {
       reason: 'Not a market day',
       date: scanDate,
     })
+  }
+
+  // ── Market holiday check (NSE closed on weekday) ─────────────────────────
+  if (!isForced) {
+    const marketOpen = await hasMarketDataToday(scanDate)
+    if (!marketOpen) {
+      console.info(`[cron/trade-finder] Skipping — Market Holiday. No trading data found for ${scanDate}. No need to re-run.`)
+      return NextResponse.json({
+        skipped: true,
+        reason: `Market Holiday — No trading data for ${scanDate}. No need to re-run.`,
+        date: scanDate,
+      })
+    }
   }
 
   // ── Supabase client ─────────────────────────────────────────────────────────
