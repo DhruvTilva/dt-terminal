@@ -45,14 +45,14 @@ async function hasMarketDataToday(todayIST: string): Promise<boolean> {
 
     const json = await res.json()
     const timestamps: number[] = json?.chart?.result?.[0]?.timestamp ?? []
-    if (timestamps.length === 0) return false
-
-    // Check if any timestamp falls on today's IST date
-    return timestamps.some(ts => {
+    // Filter to only today's IST candles
+    // NSE has ~75 candles on a normal trading day — fewer than 10 means holiday
+    const todayCandles = timestamps.filter(ts => {
       const ist = new Date(ts * 1000 + 5.5 * 60 * 60 * 1000)
       const d = `${ist.getUTCFullYear()}-${String(ist.getUTCMonth() + 1).padStart(2, '0')}-${String(ist.getUTCDate()).padStart(2, '0')}`
       return d === todayIST
     })
+    return todayCandles.length >= 10
   } catch {
     return true // on error, don't block the cron
   }
