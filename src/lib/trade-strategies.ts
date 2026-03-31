@@ -228,6 +228,10 @@ function analyzeGeneralMorningTrend(
     const morningDir   = morningClose   > morningOpen   ? 'bullish' : 'bearish'
     const afternoonDir = afternoonClose > afternoonOpen ? 'bullish' : 'bearish'
 
+    // Afternoon move must be at least 100 pts (both directions)
+    const afternoonMove = Math.abs(afternoonClose - afternoonOpen)
+    if (afternoonMove < 100) return null
+
     // Day is only valid if morning direction matches afternoon direction
     if (morningDir !== afternoonDir) return null
 

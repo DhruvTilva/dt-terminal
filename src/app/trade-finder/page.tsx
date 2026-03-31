@@ -56,7 +56,7 @@ const STRATEGIES = [
 
 const FILTER_EXPLAIN: Record<string, { title: string; desc: string }> = {
   strict_morning:  { title: 'Strict Morning Trend',  desc: 'Every 9:30–10:30 candle moved in one direction for 3 straight days. The strongest, most reliable signal.' },
-  general_morning: { title: 'General Morning Trend', desc: 'Morning session (9:30–10:30) direction matched the rest-of-day (10:30–3:30) on all 3 of the last 3 trading days — and all in the same direction. Stocks that consistently follow through on their morning bias.' },
+  general_morning: { title: 'General Morning Trend', desc: 'Morning session (9:30–10:30) direction matched the rest-of-day (10:30–3:30) on all 3 of the last 3 trading days — all in the same direction, and each afternoon session moved ≥100 pts. Stocks that consistently follow through on their morning bias with meaningful price movement.' },
   candle_pattern:  { title: 'Candle Signal',         desc: 'Latest candle is a Hammer, Shooting Star, or a strong green/red bar — hints at a reversal or continuation right now.' },
   long_trend:      { title: 'Long Trend',            desc: '20-day MA is above/below 50-day MA for 1+ month = clean trend. Best for swing trades (hold days to weeks).' },
   high_volatility: { title: 'High Volatility Move',  desc: 'Moved 2.2%–4.5% between 9:30–10:30 AM on all 3 recent days, with solid volume. Sweet spot for intraday scalping — not too slow, not overextended.' },

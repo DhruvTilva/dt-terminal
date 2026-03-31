@@ -75,6 +75,11 @@ function StatusBar({ onRefresh }: { onRefresh: () => void }) {
         </>
       )}
 
+      <span className="hidden sm:inline" style={{ color: '#263042', fontSize: 9 }}>│</span>
+      <span className="hidden sm:inline text-[9px] font-mono" style={{ color: '#354558' }}>
+        ⚠ Data for reference only · Trade at your own risk
+      </span>
+
       <div className="flex-1" />
 
       {/* Refresh button */}
