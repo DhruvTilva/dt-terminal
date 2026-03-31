@@ -9,7 +9,7 @@ on:
       force:
         description: 'Force re-run even if today scan already completed'
         required: false
-        default: 'false'
+        default: false
         type: boolean
 
 jobs:
@@ -37,41 +37,7 @@ jobs:
           echo "scan_date=$(TZ='Asia/Kolkata' date '+%Y-%m-%d')" >> $GITHUB_OUTPUT
           echo "start_time=$(TZ='Asia/Kolkata' date '+%d %b %Y, %I:%M %p IST')" >> $GITHUB_OUTPUT
 
-      - name: Check market holiday
-        id: holiday_check
-        run: |
-          SCAN_DATE="${{ steps.meta.outputs.scan_date }}"
-          curl -s "https://query1.finance.yahoo.com/v8/finance/chart/RELIANCE.NS?interval=5m&range=1d" \
-            --max-time 10 -o /tmp/reliance.json 2>/dev/null || echo '{}' > /tmp/reliance.json
-          IS_HOLIDAY=$(python3 scripts/check_holiday.py "$SCAN_DATE" 2>/dev/null || echo 'false')
-          echo "is_holiday=$IS_HOLIDAY" >> $GITHUB_OUTPUT
-          echo "Holiday check result: is_holiday=$IS_HOLIDAY for $SCAN_DATE"
-
-      - name: Send holiday skip email
-        if: steps.holiday_check.outputs.is_holiday == 'true'
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          to: ${{ secrets.MAIL_USERNAME }}
-          from: DT's Terminal <${{ secrets.MAIL_USERNAME }}>
-          subject: "⏭ DT's Terminal — Skipping Today's Market Scan (${{ steps.meta.outputs.scan_date }})"
-          body: |
-            DT's Terminal — Daily Market Scan
-
-            Status     : ⏭ SKIPPED
-            Scan Date  : ${{ steps.meta.outputs.scan_date }}
-            Reason     : Market Holiday — No NSE trading data found
-
-            No action needed.
-            Next scan will run on the next trading day.
-
-
-
       - name: Send start email
-        if: steps.holiday_check.outputs.is_holiday != 'true'
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
@@ -96,7 +62,6 @@ jobs:
 
       - name: Run daily market scan
         id: scan
-        if: steps.holiday_check.outputs.is_holiday != 'true'
         run: |
           if [ "${{ github.event.inputs.force }}" = "true" ]; then
             npx tsx scripts/run-scan.ts --force 2>&1 | tee /tmp/scan_output.txt
@@ -110,11 +75,10 @@ jobs:
 
       - name: Extract scan stats
         id: stats
-        if: always() && steps.holiday_check.outputs.is_holiday != 'true'
+        if: always()
         run: |
           OUTPUT=$(cat /tmp/scan_output.txt 2>/dev/null || echo "No output")
-          # Extract key lines from scan output
-          STOCKS=$(echo "$OUTPUT" | grep -oP 'Stocks processed : \K[^\n]+' | tail -1 || echo "N/A")
+          STOCKS=$(echo "$OUTPUT" | grep -oP 'Stocks processed : \K[^\n]+' | tail -1 || echo "")
           SIGNALS=$(echo "$OUTPUT" | grep -oP 'Signals found    : \K[^\n]+' | tail -1 || echo "N/A")
           ERRORS=$(echo "$OUTPUT" | grep -oP 'Errors           : \K[^\n]+' | tail -1 || echo "N/A")
           DURATION=$(echo "$OUTPUT" | grep -oP 'Duration         : \K[^\n]+' | tail -1 || echo "N/A")
@@ -125,9 +89,17 @@ jobs:
           echo "duration=$DURATION" >> $GITHUB_OUTPUT
           echo "status=$STATUS" >> $GITHUB_OUTPUT
           echo "end_time=$(TZ='Asia/Kolkata' date '+%d %b %Y, %I:%M %p IST')" >> $GITHUB_OUTPUT
+          # Extract just the processed count (e.g. "500 / 2000" → "500")
+          STOCKS_NUM=$(echo "$STOCKS" | grep -oP '^\d+' || echo "0")
+          # No data if: empty output (early exit) OR processed count is 0
+          if [ -z "$STOCKS" ] || [ "$STOCKS_NUM" = "0" ]; then
+            echo "has_data=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_data=true" >> $GITHUB_OUTPUT
+          fi
 
       - name: Send completion email (success)
-        if: success() && steps.holiday_check.outputs.is_holiday != 'true'
+        if: success() && steps.stats.outputs.has_data == 'true'
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
@@ -155,8 +127,31 @@ jobs:
 
 
 
+      - name: Send skip email (no market data)
+        if: success() && steps.stats.outputs.has_data == 'false'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          to: ${{ secrets.MAIL_USERNAME }}
+          from: DT's Terminal <${{ secrets.MAIL_USERNAME }}>
+          subject: "⏭ DT's Terminal — Skipping Today's Market Scan (${{ steps.meta.outputs.scan_date }})"
+          body: |
+            DT's Terminal — Daily Market Scan
+
+            Status     : ⏭ SKIPPED
+            Scan Date  : ${{ steps.meta.outputs.scan_date }}
+            Reason     : Market Holiday — No NSE trading data found
+
+            No action needed.
+            Next scan will run on the next trading day.
+
+
+
       - name: Send completion email (failure)
-        if: failure() && steps.holiday_check.outputs.is_holiday != 'true'
+        if: failure()
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
