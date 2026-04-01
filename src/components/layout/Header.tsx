@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useStore } from '@/store/useStore'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import type { DbNotification } from '@/types'
 
 export default function Header() {
   const { indices, stocks, alerts, searchQuery, setSearchQuery, markAlertRead, isRefreshing } = useStore()
@@ -15,7 +16,17 @@ export default function Header() {
   const [isGuest, setIsGuest] = useState(false)       // true after auth check with no user
   const [showTradeToast, setShowTradeToast] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
-  const unread = alerts.filter(a => !a.read).length
+  const alertsRef = useRef<HTMLDivElement>(null)
+
+  // DB-backed notifications state
+  const [dbNotifs, setDbNotifs] = useState<DbNotification[]>([])
+  const [notifTab, setNotifTab] = useState<'notif' | 'live'>('notif')
+  const lastFetchRef = useRef<number>(0)
+
+  // Unread counts
+  const liveUnread  = alerts.filter(a => !a.read).length
+  const dbUnread    = dbNotifs.filter(n => !n.is_read).length
+  const unread      = liveUnread + dbUnread
   const router = useRouter()
   const pathname = usePathname()
 
@@ -36,6 +47,53 @@ export default function Header() {
     })
   }, [])
 
+  // Fetch DB notifications (only for logged-in users, with 5-min staleness guard)
+  const fetchNotifications = useCallback(async (force = false) => {
+    if (isGuest) return
+    const now = Date.now()
+    if (!force && now - lastFetchRef.current < 5 * 60 * 1000) return
+    lastFetchRef.current = now
+    try {
+      const res = await fetch('/api/notifications')
+      if (!res.ok) return
+      const data = await res.json()
+      setDbNotifs(data.notifications || [])
+    } catch { /* silent — never break the UI */ }
+  }, [isGuest])
+
+  // Fetch on mount once user auth resolves
+  useEffect(() => {
+    if (!isGuest && userName !== null) fetchNotifications(true)
+  }, [isGuest, userName, fetchNotifications])
+
+  // Fetch when user opens the dropdown (if stale)
+  const handleToggleAlerts = () => {
+    setShowAlerts(v => {
+      if (!v) fetchNotifications()
+      return !v
+    })
+  }
+
+  // Mark a single DB notification as read
+  const markDbRead = async (id: string) => {
+    setDbNotifs(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
+    fetch('/api/notifications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    }).catch(() => {})
+  }
+
+  // Mark all DB notifications as read
+  const markAllDbRead = async () => {
+    setDbNotifs(prev => prev.map(n => ({ ...n, is_read: true })))
+    fetch('/api/notifications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ all: true }),
+    }).catch(() => {})
+  }
+
   // Close user menu + mobile menu on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -44,6 +102,9 @@ export default function Header() {
       }
       if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
         setShowMobileMenu(false)
+      }
+      if (alertsRef.current && !alertsRef.current.contains(e.target as Node)) {
+        setShowAlerts(false)
       }
     }
     document.addEventListener('mousedown', handler)
@@ -235,10 +296,10 @@ export default function Header() {
 
         {/* Actions */}
         <div className="flex items-center gap-0.5 ml-1">
-          {/* Alerts */}
-          <div className="relative flex items-center">
+          {/* Alerts + Notifications */}
+          <div className="relative flex items-center" ref={alertsRef}>
             <button
-              onClick={() => setShowAlerts(v => !v)}
+              onClick={handleToggleAlerts}
               className={`flex items-center gap-1.5 h-8 px-3 text-[11px] font-mono transition-colors ${showAlerts ? 'text-text-primary bg-bg-hover' : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'}`}
             >
               ALERTS
@@ -250,27 +311,120 @@ export default function Header() {
             </button>
 
             {showAlerts && (
-              <div className="absolute right-0 top-full w-80 bg-bg-secondary border border-border-secondary z-50 animate-fade shadow-2xl">
+              <div className="absolute right-0 top-full w-84 bg-bg-secondary border border-border-secondary z-50 animate-fade shadow-2xl" style={{ width: 320 }}>
+
+                {/* Header row */}
                 <div className="px-3 py-2 border-b border-border-primary flex items-center justify-between">
-                  <span className="section-label">Alerts · {unread} unread</span>
-                  <button onClick={() => setShowAlerts(false)} className="text-[10px] text-text-muted hover:text-text-primary font-mono">✕</button>
-                </div>
-                <div className="max-h-72 overflow-y-auto">
-                  {alerts.length === 0
-                    ? <div className="px-3 py-8 text-center text-[11px] font-mono text-text-muted">No alerts yet</div>
-                    : alerts.slice(0, 10).map(a => (
-                      <button key={a.id} onClick={() => markAlertRead(a.id)}
-                        className={`w-full text-left px-3 py-2.5 border-b border-border-primary/40 hover:bg-bg-hover transition-colors flex items-start gap-2.5 ${!a.read ? 'bg-blue/5' : ''}`}
+                  <div className="flex items-center gap-1">
+                    {/* Tab: Notifications */}
+                    <button
+                      onClick={() => setNotifTab('notif')}
+                      className="text-[10px] font-mono px-2 py-1 transition-colors"
+                      style={{
+                        color: notifTab === 'notif' ? '#E6EDF3' : '#6B7A90',
+                        borderBottom: notifTab === 'notif' ? '1px solid #3B82F6' : '1px solid transparent',
+                      }}
+                    >
+                      INBOX {dbUnread > 0 && <span style={{ background: '#F43F5E', color: '#fff', fontSize: 8, padding: '1px 4px', borderRadius: 2, marginLeft: 3 }}>{dbUnread}</span>}
+                    </button>
+                    {/* Tab: Live */}
+                    <button
+                      onClick={() => setNotifTab('live')}
+                      className="text-[10px] font-mono px-2 py-1 transition-colors"
+                      style={{
+                        color: notifTab === 'live' ? '#E6EDF3' : '#6B7A90',
+                        borderBottom: notifTab === 'live' ? '1px solid #F97316' : '1px solid transparent',
+                      }}
+                    >
+                      LIVE {liveUnread > 0 && <span style={{ background: '#F97316', color: '#fff', fontSize: 8, padding: '1px 4px', borderRadius: 2, marginLeft: 3 }}>{liveUnread}</span>}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {notifTab === 'notif' && dbUnread > 0 && (
+                      <button
+                        onClick={markAllDbRead}
+                        className="text-[10px] font-mono text-text-muted hover:text-blue transition-colors"
+                        style={{ color: '#3B82F6' }}
                       >
-                        <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${a.impact === 'high' ? 'bg-red' : a.impact === 'medium' ? 'bg-yellow' : 'bg-text-muted'}`} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[12px] font-medium text-text-primary truncate">{a.title}</p>
-                          <p className="text-[10px] font-mono text-text-muted mt-0.5 line-clamp-2">{a.message}</p>
-                        </div>
+                        Mark all read
                       </button>
-                    ))
-                  }
+                    )}
+                    <button onClick={() => setShowAlerts(false)} className="text-[10px] text-text-muted hover:text-text-primary font-mono">✕</button>
+                  </div>
                 </div>
+
+                {/* ── INBOX TAB (DB notifications) ── */}
+                {notifTab === 'notif' && (
+                  <div className="max-h-72 overflow-y-auto">
+                    {isGuest ? (
+                      <div className="px-3 py-8 text-center text-[11px] font-mono text-text-muted">Sign in to see notifications</div>
+                    ) : dbNotifs.length === 0 ? (
+                      <div className="px-3 py-8 text-center text-[11px] font-mono text-text-muted">No notifications yet</div>
+                    ) : dbNotifs.map(n => {
+                      const icon = n.type === 'admin' ? '📣'
+                        : n.category === 'bulk' ? '📊'
+                        : n.category === 'insider' ? '🏢'
+                        : n.category === 'promoter_selling' ? '⚠️'
+                        : n.category === 'fii' ? '🏦'
+                        : n.category === 'pump_dump' ? '🚨'
+                        : n.category === 'weak_fundamentals' ? '📉'
+                        : '🔔'
+
+                      const timeAgo = (() => {
+                        const diff = Date.now() - new Date(n.created_at).getTime()
+                        const m = Math.floor(diff / 60000)
+                        if (m < 1)  return 'just now'
+                        if (m < 60) return `${m}m ago`
+                        const h = Math.floor(m / 60)
+                        if (h < 24) return `${h}h ago`
+                        return `${Math.floor(h / 24)}d ago`
+                      })()
+
+                      return (
+                        <button
+                          key={n.id}
+                          onClick={() => markDbRead(n.id)}
+                          className={`w-full text-left px-3 py-2.5 border-b border-border-primary/40 hover:bg-bg-hover transition-colors flex items-start gap-2.5 ${!n.is_read ? 'bg-blue/5' : ''}`}
+                        >
+                          <span className="mt-0.5 text-[14px] shrink-0">{icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] text-text-primary leading-snug line-clamp-2">{n.message}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              {n.stock_symbol && (
+                                <span className="text-[10px] font-mono px-1.5 py-0.5" style={{ background: 'rgba(59,130,246,0.12)', color: '#58a6ff', borderRadius: 3 }}>
+                                  {n.stock_symbol}
+                                </span>
+                              )}
+                              <span className="text-[10px] font-mono text-text-muted">{timeAgo}</span>
+                              {!n.is_read && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue shrink-0" style={{ background: '#3B82F6' }} />}
+                            </div>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* ── LIVE TAB (existing Zustand alerts, untouched) ── */}
+                {notifTab === 'live' && (
+                  <div className="max-h-72 overflow-y-auto">
+                    {alerts.length === 0
+                      ? <div className="px-3 py-8 text-center text-[11px] font-mono text-text-muted">No live alerts yet</div>
+                      : alerts.slice(0, 10).map(a => (
+                        <button key={a.id} onClick={() => markAlertRead(a.id)}
+                          className={`w-full text-left px-3 py-2.5 border-b border-border-primary/40 hover:bg-bg-hover transition-colors flex items-start gap-2.5 ${!a.read ? 'bg-blue/5' : ''}`}
+                        >
+                          <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${a.impact === 'high' ? 'bg-red' : a.impact === 'medium' ? 'bg-yellow' : 'bg-text-muted'}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-medium text-text-primary truncate">{a.title}</p>
+                            <p className="text-[10px] font-mono text-text-muted mt-0.5 line-clamp-2">{a.message}</p>
+                          </div>
+                        </button>
+                      ))
+                    }
+                  </div>
+                )}
+
               </div>
             )}
           </div>

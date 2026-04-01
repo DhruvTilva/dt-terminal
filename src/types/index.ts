@@ -82,6 +82,18 @@ export interface Alert {
   read: boolean
 }
 
+// DB-backed persistent notification (admin messages + smart auto alerts)
+export interface DbNotification {
+  id: string
+  user_id: string | null          // null = global (shown to all users)
+  stock_symbol: string | null
+  message: string
+  type: 'admin' | 'auto'
+  category: 'insider' | 'bulk' | 'fii' | 'pump_dump' | 'promoter_selling' | 'weak_fundamentals' | null
+  is_read: boolean
+  created_at: string
+}
+
 export interface User {
   id: string
   email: string

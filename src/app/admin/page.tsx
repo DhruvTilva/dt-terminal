@@ -77,6 +77,11 @@ export default function AdminPage() {
   const [analyticsLoading, setAnalyticsLoading] = useState(true)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Send Notification state
+  const [notifTarget, setNotifTarget] = useState<'all' | string>('all')
+  const [notifMsg, setNotifMsg] = useState('')
+  const [notifSending, setNotifSending] = useState(false)
+
   // Admin auth check
   useEffect(() => {
     const supabase = createClient()
@@ -156,6 +161,28 @@ export default function AdminPage() {
     setUpdatingId(null)
   }
 
+  const sendNotification = async () => {
+    if (!notifMsg.trim()) { showToast('Message cannot be empty', 'error'); return }
+    setNotifSending(true)
+    try {
+      const body: { message: string; user_id?: string } = { message: notifMsg.trim() }
+      if (notifTarget !== 'all') body.user_id = notifTarget
+      const res = await fetch('/api/admin/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json()
+      if (!res.ok) { showToast(data.error || 'Failed to send', 'error'); return }
+      setNotifMsg('')
+      setNotifTarget('all')
+      showToast(notifTarget === 'all' ? 'Sent to all users ✓' : 'Notification sent ✓')
+    } catch {
+      showToast('Connection failed', 'error')
+    }
+    setNotifSending(false)
+  }
+
   const formatDate = (d: string) => {
     try { return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) }
     catch { return '—' }
@@ -232,6 +259,70 @@ export default function AdminPage() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* ── Send Notification ── */}
+        <div style={{ background: '#121A2B', border: '1px solid #263042', borderRadius: 8, padding: '18px 20px', marginBottom: 20 }}>
+          <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: '#6B7A90', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>
+            📣 Send Notification
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            {/* Recipient selector */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 220 }}>
+              <label style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: '#6B7A90', letterSpacing: '0.05em' }}>SEND TO</label>
+              <select
+                value={notifTarget}
+                onChange={e => setNotifTarget(e.target.value)}
+                style={{
+                  background: '#0B1220', border: '1px solid #263042',
+                  color: '#E6EDF3', padding: '8px 10px', fontSize: 12,
+                  borderRadius: 6, outline: 'none', fontFamily: 'var(--font-sans)',
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="all">📢 All Users (Broadcast)</option>
+                {users.map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.name || u.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Message textarea */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: 1, minWidth: 200 }}>
+              <label style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: '#6B7A90', letterSpacing: '0.05em' }}>MESSAGE</label>
+              <textarea
+                value={notifMsg}
+                onChange={e => setNotifMsg(e.target.value)}
+                placeholder="Type your notification message…"
+                rows={2}
+                style={{
+                  background: '#0B1220', border: '1px solid #263042',
+                  color: '#E6EDF3', padding: '8px 10px', fontSize: 13,
+                  borderRadius: 6, outline: 'none', fontFamily: 'var(--font-sans)',
+                  resize: 'vertical', lineHeight: 1.5,
+                }}
+              />
+            </div>
+
+            {/* Send button */}
+            <button
+              onClick={sendNotification}
+              disabled={notifSending || !notifMsg.trim()}
+              style={{
+                padding: '10px 20px', fontSize: 12, fontFamily: 'var(--font-mono)',
+                background: notifSending || !notifMsg.trim() ? 'rgba(59,130,246,0.1)' : 'rgba(59,130,246,0.15)',
+                border: '1px solid rgba(59,130,246,0.3)',
+                color: notifSending || !notifMsg.trim() ? '#354558' : '#3B82F6',
+                borderRadius: 6, cursor: notifSending || !notifMsg.trim() ? 'not-allowed' : 'pointer',
+                fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase',
+                whiteSpace: 'nowrap', height: 40,
+              }}
+            >
+              {notifSending ? 'Sending…' : 'Send →'}
+            </button>
+          </div>
         </div>
 
         {/* Controls */}

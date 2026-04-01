@@ -1,0 +1,36 @@
+name: Smart Auto Alerts
+
+on:
+  schedule:
+    # Every 30 min, Mon–Fri, during market hours: 9:00 AM–4:30 PM IST = 3:30–11:00 UTC
+    - cron: '0,30 3-10 * * 1-5'
+    - cron: '0 11 * * 1-5'
+  workflow_dispatch: {}
+
+jobs:
+  auto-alerts:
+    name: Detect and store smart market alerts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Run auto-alert detection
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X GET "${{ secrets.APP_URL }}/api/cron/auto-alerts" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            --max-time 25)
+
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          STATUS=$(echo "$RESPONSE" | tail -n 1)
+
+          echo "Status  : $STATUS"
+          echo "Response: $BODY"
+
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::Auto-alerts endpoint returned HTTP $STATUS"
+            exit 1
+          fi
+
+          ALERTS=$(echo "$BODY" | grep -oP '"alertsGenerated":\K\d+' || echo "0")
+          echo "Alerts generated: $ALERTS"
