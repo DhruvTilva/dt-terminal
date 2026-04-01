@@ -17,11 +17,15 @@ type Analytics = {
   total: number
   today: number
   activeNow: number
-  mobilePct:    number | null
-  topBrowser:   string | null
-  topCountry:   string | null
-  topPage:      string | null
-  storageBytes: number
+  mobilePct:     number | null
+  topBrowser:    string | null
+  topCountry:    string | null
+  topPage:       string | null
+  storageBytes:  number
+  conversionPct:    number
+  returningPct:     number
+  peakHour:         string | null
+  lastVisitorName:  string | null
 }
 
 function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
@@ -216,7 +220,7 @@ export default function AdminPage() {
           ← Dashboard
         </button>
         <span style={{ color: '#354558' }}>|</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#E6EDF3', fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>ADMIN PANEL</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#E6EDF3', fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>ADMIN PANEL (DT)</span>
       </div>
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px' }}>
@@ -269,6 +273,66 @@ export default function AdminPage() {
                   <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#354558', letterSpacing: '0.08em', textTransform: 'uppercase' }}>DB Storage</div>
                   <div style={{ fontSize: 12, fontWeight: 600, color: '#9FB0C0', fontFamily: 'var(--font-mono)', marginTop: 1 }}>
                     {analytics.storageBytes > 0 ? formatBytes(analytics.storageBytes) : '—'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Conversion Rate */}
+              <div style={{
+                background: '#0B1220', border: '1px solid #263042',
+                borderRadius: 6, padding: '7px 12px',
+                display: 'flex', alignItems: 'center', gap: 7, minWidth: 130,
+              }}>
+                <span style={{ fontSize: 13 }}>🎯</span>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#354558', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Conversion</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#9FB0C0', fontFamily: 'var(--font-mono)', marginTop: 1 }}>
+                    {analytics.conversionPct}%
+                  </div>
+                </div>
+              </div>
+
+              {/* New vs Returning */}
+              <div style={{
+                background: '#0B1220', border: '1px solid #263042',
+                borderRadius: 6, padding: '7px 12px',
+                display: 'flex', alignItems: 'center', gap: 7, minWidth: 130,
+              }}>
+                <span style={{ fontSize: 13 }}>🔁</span>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#354558', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Returning</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#9FB0C0', fontFamily: 'var(--font-mono)', marginTop: 1 }}>
+                    {analytics.returningPct}%
+                  </div>
+                </div>
+              </div>
+
+              {/* Peak Hour */}
+              <div style={{
+                background: '#0B1220', border: '1px solid #263042',
+                borderRadius: 6, padding: '7px 12px',
+                display: 'flex', alignItems: 'center', gap: 7, minWidth: 120,
+              }}>
+                <span style={{ fontSize: 13 }}>⏰</span>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#354558', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Peak Hour</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#9FB0C0', fontFamily: 'var(--font-mono)', marginTop: 1 }}>
+                    {analytics.peakHour ?? '—'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Last Visitor */}
+              <div style={{
+                background: '#0B1220', border: '1px solid #263042',
+                borderRadius: 6, padding: '7px 12px',
+                display: 'flex', alignItems: 'center', gap: 7, minWidth: 130,
+              }}>
+                <span style={{ fontSize: 13 }}>👤</span>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#354558', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Last Visitor</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#9FB0C0', fontFamily: 'var(--font-mono)', marginTop: 1, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {analytics.lastVisitorName ?? '—'}
                   </div>
                 </div>
               </div>
