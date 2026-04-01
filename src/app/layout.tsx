@@ -60,6 +60,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/icon.svg" />
       </head>
       <body className="h-full overflow-hidden">
+        {/* Capture beforeinstallprompt before React mounts — prevents missing the event */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          window.__pwaPrompt = null;
+          window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            window.__pwaPrompt = e;
+          });
+        `}} />
         <VisitorTracker />
         {children}
       </body>

@@ -61,7 +61,14 @@ export default function PWAInstallButton() {
       return
     }
 
-    // Android: listen for Chrome's native install prompt
+    // Android: check if prompt was already captured before React mounted
+    const earlyPrompt = (window as { __pwaPrompt?: BeforeInstallPromptEvent }).__pwaPrompt
+    if (earlyPrompt) {
+      promptRef.current = earlyPrompt
+      setShow(true)
+    }
+
+    // Android: also listen for future events (in case not yet fired)
     const beforeInstallHandler = (e: Event) => {
       e.preventDefault()
       promptRef.current = e as BeforeInstallPromptEvent
