@@ -6,7 +6,7 @@ import { useStore } from '@/store/useStore'
 export function useMarketData() {
   const {
     setIndices, setStocks, setNews, setOpportunities,
-    setLoading, addAlert,
+    setLoading,
     setRefreshing, setLastUpdated, setNewItemIds,
   } = useStore()
   const intervalRef = useRef<NodeJS.Timeout>(null)
@@ -70,21 +70,6 @@ export function useMarketData() {
           .then(oppData => {
             if (Array.isArray(oppData)) {
               setOpportunities(oppData)
-              oppData
-                .filter((o: any) => o.impact === 'high')
-                .slice(0, 3)
-                .forEach((o: any) => {
-                  addAlert({
-                    id: `alert-${o.id}`,
-                    type: 'opportunity',
-                    title: `${o.type.replace('_', ' ').toUpperCase()}: ${o.symbol}`,
-                    message: o.reason,
-                    impact: o.impact,
-                    symbol: o.symbol,
-                    timestamp: new Date().toISOString(),
-                    read: false,
-                  })
-                })
             }
           })
           .catch(() => {})
@@ -96,7 +81,7 @@ export function useMarketData() {
       setRefreshing(false)
       hasFetched.current = true
     }
-  }, [setIndices, setStocks, setNews, setOpportunities, setLoading, addAlert, setRefreshing, setLastUpdated, setNewItemIds])
+  }, [setIndices, setStocks, setNews, setOpportunities, setLoading, setRefreshing, setLastUpdated, setNewItemIds])
 
   useEffect(() => {
     if (!hasFetched.current) {

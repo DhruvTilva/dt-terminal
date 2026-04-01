@@ -150,7 +150,7 @@ export default function HomePage() {
               ),
               color: '#3B82F6',
               label: 'Smart News',
-              desc: 'Market-moving news filtered and scored by impact.',
+              desc: 'Market-moving news Only with Advance filtered and scored by impact.',
             },
             {
               icon: (
@@ -160,7 +160,7 @@ export default function HomePage() {
               ),
               color: '#F59E0B',
               label: 'Trade Signals',
-              desc: 'Scans all stocks through price, volume & breakout filters — surfaces ready-to-act setups instantly.',
+              desc: 'Scans all stocks through price, volume & breakout filters,surfaces ready-to-act setups instantly.',
             },
             {
               icon: (
@@ -170,20 +170,20 @@ export default function HomePage() {
               ),
               color: '#A78BFA',
               label: 'ML Prediction',
-              desc: 'Nightly AI predicts next-day direction for signal stocks — with confidence % and auto-graded accuracy.',
+              desc: 'Nightly AI predicts next-day direction for signal stocks-with confidence % and auto-graded accuracy.',
             },
           ].map(f => (
-            <div key={f.label} className="feature-card text-left rounded-xl p-4 sm:p-5">
+            <div key={f.label} className="feature-card text-left rounded-xl p-6 sm:p-7">
               <div
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg mb-3"
+                className="inline-flex items-center justify-center w-9 h-9 rounded-lg mb-4"
                 style={{ background: `${f.color}14`, border: `1px solid ${f.color}22` }}
               >
                 {f.icon}
               </div>
-              <div className="mb-1" style={{ fontSize: 13, fontWeight: 600, color: '#E6EDF3' }}>
+              <div className="mb-2" style={{ fontSize: 13, fontWeight: 600, color: '#E6EDF3' }}>
                 {f.label}
               </div>
-              <div style={{ fontSize: 12, color: '#6B7A90', lineHeight: 1.65 }}>
+              <div style={{ fontSize: 12, color: '#6B7A90', lineHeight: 1.7 }}>
                 {f.desc}
               </div>
             </div>

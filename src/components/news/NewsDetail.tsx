@@ -25,7 +25,7 @@ function impactExplanation(item: NewsItem): string {
 }
 
 export default function NewsDetail() {
-  const { selectedNews, setSelectedNews, bookmarks, addBookmark, removeBookmark, opportunities } = useStore()
+  const { selectedNews, setSelectedNews, opportunities } = useStore()
 
   if (!selectedNews) {
     return (
@@ -41,26 +41,9 @@ export default function NewsDetail() {
   }
 
   const item = selectedNews
-  const isBookmarked = bookmarks.some(b => b.newsId === item.id)
   const isHigh = item.impact === 'high'
   const isMed  = item.impact === 'medium'
   const relatedOpps = opportunities.filter(o => item.relatedStocks.includes(o.symbol))
-
-  const toggleBookmark = async () => {
-    if (isBookmarked) {
-      try { await fetch(`/api/bookmarks?newsId=${item.id}`, { method: 'DELETE' }) } catch {}
-      removeBookmark(item.id)
-    } else {
-      try {
-        await fetch('/api/bookmarks', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ newsId: item.id, newsData: item }),
-        })
-      } catch {}
-      addBookmark({ id: Date.now().toString(), userId: '', newsId: item.id, news: item, savedAt: new Date().toISOString() })
-    }
-  }
 
   const ageStr = (() => {
     try { return formatDistanceToNow(new Date(item.publishedAt), { addSuffix: true }) }
@@ -224,19 +207,6 @@ export default function NewsDetail() {
 
           {/* Actions */}
           <div className="flex items-center gap-2.5" style={{ borderTop: '1px solid #263042', paddingTop: 16 }}>
-            <button
-              onClick={toggleBookmark}
-              className={`font-mono border transition-colors`}
-              style={{
-                fontSize: 12,
-                padding: '6px 14px',
-                borderColor: isBookmarked ? 'rgba(245,158,11,0.35)' : '#354558',
-                color: isBookmarked ? '#F59E0B' : '#6B7A90',
-                background: isBookmarked ? 'rgba(245,158,11,0.08)' : 'transparent',
-              }}
-            >
-              {isBookmarked ? '★ Saved' : '☆ Save'}
-            </button>
             <a
               href={item.sourceUrl}
               target="_blank"

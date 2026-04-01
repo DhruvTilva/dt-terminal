@@ -63,14 +63,6 @@ export interface WatchlistItem {
   addedAt: string
 }
 
-export interface BookmarkItem {
-  id: string
-  userId: string
-  newsId: string
-  news: NewsItem
-  savedAt: string
-}
-
 export interface Alert {
   id: string
   type: 'news' | 'price' | 'opportunity'

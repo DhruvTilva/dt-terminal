@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { DbNotification } from '@/types'
 
 export default function Header() {
-  const { indices, stocks, alerts, searchQuery, setSearchQuery, markAlertRead, isRefreshing } = useStore()
+  const { indices, stocks, searchQuery, setSearchQuery, isRefreshing } = useStore()
   const [showAlerts, setShowAlerts] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
@@ -20,13 +20,17 @@ export default function Header() {
 
   // DB-backed notifications state
   const [dbNotifs, setDbNotifs] = useState<DbNotification[]>([])
-  const [notifTab, setNotifTab] = useState<'notif' | 'live'>('notif')
+  const [notifTab, setNotifTab] = useState<'live' | 'inbox'>('live')
   const lastFetchRef = useRef<number>(0)
 
+  // Split notifications by type
+  const liveNotifs  = dbNotifs.filter(n => n.type === 'auto')
+  const inboxNotifs = dbNotifs.filter(n => n.type === 'admin')
+
   // Unread counts
-  const liveUnread  = alerts.filter(a => !a.read).length
-  const dbUnread    = dbNotifs.filter(n => !n.is_read).length
-  const unread      = liveUnread + dbUnread
+  const liveUnread  = liveNotifs.filter(n => !n.is_read).length
+  const inboxUnread = inboxNotifs.filter(n => !n.is_read).length
+  const unread      = liveUnread + inboxUnread
   const router = useRouter()
   const pathname = usePathname()
 
@@ -311,58 +315,74 @@ export default function Header() {
             </button>
 
             {showAlerts && (
-              <div className="absolute right-0 top-full w-84 bg-bg-secondary border border-border-secondary z-50 animate-fade shadow-2xl" style={{ width: 320 }}>
+              <div className="absolute right-0 top-full bg-bg-secondary border border-border-secondary z-50 animate-fade shadow-2xl" style={{ width: 340, marginTop: 4, borderRadius: 8 }}>
 
                 {/* Header row */}
-                <div className="px-3 py-2 border-b border-border-primary flex items-center justify-between">
-                  <div className="flex items-center gap-1">
-                    {/* Tab: Notifications */}
-                    <button
-                      onClick={() => setNotifTab('notif')}
-                      className="text-[10px] font-mono px-2 py-1 transition-colors"
-                      style={{
-                        color: notifTab === 'notif' ? '#E6EDF3' : '#6B7A90',
-                        borderBottom: notifTab === 'notif' ? '1px solid #3B82F6' : '1px solid transparent',
-                      }}
-                    >
-                      INBOX {dbUnread > 0 && <span style={{ background: '#F43F5E', color: '#fff', fontSize: 8, padding: '1px 4px', borderRadius: 2, marginLeft: 3 }}>{dbUnread}</span>}
-                    </button>
-                    {/* Tab: Live */}
+                <div style={{ padding: '12px 14px 0 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: '#6B7A90', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Notifications</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      {(notifTab === 'live' ? liveUnread : inboxUnread) > 0 && (
+                        <button
+                          onClick={markAllDbRead}
+                          style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: '#3B82F6', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                      <button onClick={() => setShowAlerts(false)} style={{ fontSize: 13, color: '#6B7A90', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1, padding: '0 2px' }}>✕</button>
+                    </div>
+                  </div>
+
+                  {/* Tabs — LIVE first, then INBOX */}
+                  <div style={{ display: 'flex', gap: 4 }}>
                     <button
                       onClick={() => setNotifTab('live')}
-                      className="text-[10px] font-mono px-2 py-1 transition-colors"
                       style={{
-                        color: notifTab === 'live' ? '#E6EDF3' : '#6B7A90',
-                        borderBottom: notifTab === 'live' ? '1px solid #F97316' : '1px solid transparent',
+                        fontSize: 11, fontFamily: 'var(--font-mono)', padding: '6px 12px',
+                        background: notifTab === 'live' ? 'rgba(249,115,22,0.1)' : 'transparent',
+                        border: notifTab === 'live' ? '1px solid rgba(249,115,22,0.25)' : '1px solid transparent',
+                        color: notifTab === 'live' ? '#F97316' : '#6B7A90',
+                        borderRadius: 5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                        transition: 'all 0.15s',
                       }}
                     >
-                      LIVE {liveUnread > 0 && <span style={{ background: '#F97316', color: '#fff', fontSize: 8, padding: '1px 4px', borderRadius: 2, marginLeft: 3 }}>{liveUnread}</span>}
+                      LIVE
+                      {liveUnread > 0 && (
+                        <span style={{ background: '#F97316', color: '#fff', fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, lineHeight: '14px' }}>{liveUnread}</span>
+                      )}
                     </button>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {notifTab === 'notif' && dbUnread > 0 && (
-                      <button
-                        onClick={markAllDbRead}
-                        className="text-[10px] font-mono text-text-muted hover:text-blue transition-colors"
-                        style={{ color: '#3B82F6' }}
-                      >
-                        Mark all read
-                      </button>
-                    )}
-                    <button onClick={() => setShowAlerts(false)} className="text-[10px] text-text-muted hover:text-text-primary font-mono">✕</button>
+                    <button
+                      onClick={() => setNotifTab('inbox')}
+                      style={{
+                        fontSize: 11, fontFamily: 'var(--font-mono)', padding: '6px 12px',
+                        background: notifTab === 'inbox' ? 'rgba(59,130,246,0.12)' : 'transparent',
+                        border: notifTab === 'inbox' ? '1px solid rgba(59,130,246,0.3)' : '1px solid transparent',
+                        color: notifTab === 'inbox' ? '#58a6ff' : '#6B7A90',
+                        borderRadius: 5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      INBOX
+                      {inboxUnread > 0 && (
+                        <span style={{ background: '#F43F5E', color: '#fff', fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, lineHeight: '14px' }}>{inboxUnread}</span>
+                      )}
+                    </button>
                   </div>
                 </div>
 
-                {/* ── INBOX TAB (DB notifications) ── */}
-                {notifTab === 'notif' && (
-                  <div className="max-h-72 overflow-y-auto">
+                {/* Divider */}
+                <div style={{ height: 1, background: '#1E2A3B', margin: '10px 0 0 0' }} />
+
+                {/* ── LIVE TAB (Smart Auto Alerts — type='auto') ── */}
+                {notifTab === 'live' && (
+                  <div style={{ maxHeight: 320, overflowY: 'auto' }}>
                     {isGuest ? (
-                      <div className="px-3 py-8 text-center text-[11px] font-mono text-text-muted">Sign in to see notifications</div>
-                    ) : dbNotifs.length === 0 ? (
-                      <div className="px-3 py-8 text-center text-[11px] font-mono text-text-muted">No notifications yet</div>
-                    ) : dbNotifs.map(n => {
-                      const icon = n.type === 'admin' ? '📣'
-                        : n.category === 'bulk' ? '📊'
+                      <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 12, fontFamily: 'var(--font-mono)', color: '#6B7A90' }}>Sign in to see alerts</div>
+                    ) : liveNotifs.length === 0 ? (
+                      <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 12, fontFamily: 'var(--font-mono)', color: '#6B7A90' }}>No alerts yet</div>
+                    ) : liveNotifs.map(n => {
+                      const icon = n.category === 'bulk' ? '📊'
                         : n.category === 'insider' ? '🏢'
                         : n.category === 'promoter_selling' ? '⚠️'
                         : n.category === 'fii' ? '🏦'
@@ -384,19 +404,31 @@ export default function Header() {
                         <button
                           key={n.id}
                           onClick={() => markDbRead(n.id)}
-                          className={`w-full text-left px-3 py-2.5 border-b border-border-primary/40 hover:bg-bg-hover transition-colors flex items-start gap-2.5 ${!n.is_read ? 'bg-blue/5' : ''}`}
+                          style={{
+                            width: '100%', textAlign: 'left',
+                            padding: '12px 14px',
+                            borderBottom: '1px solid #1E2A3B',
+                            background: !n.is_read ? 'rgba(249,115,22,0.04)' : 'transparent',
+                            display: 'flex', alignItems: 'flex-start', gap: 10,
+                            cursor: 'pointer',
+                            transition: 'background 0.15s',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = !n.is_read ? 'rgba(249,115,22,0.04)' : 'transparent')}
                         >
-                          <span className="mt-0.5 text-[14px] shrink-0">{icon}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[12px] text-text-primary leading-snug line-clamp-2">{n.message}</p>
-                            <div className="flex items-center gap-2 mt-1">
+                          <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1, lineHeight: 1 }}>{icon}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontSize: 12, color: '#C9D1D9', lineHeight: 1.5, marginBottom: 5, wordBreak: 'break-word' }}>{n.message}</p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               {n.stock_symbol && (
-                                <span className="text-[10px] font-mono px-1.5 py-0.5" style={{ background: 'rgba(59,130,246,0.12)', color: '#58a6ff', borderRadius: 3 }}>
+                                <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', background: 'rgba(249,115,22,0.12)', color: '#F97316', borderRadius: 3, padding: '1px 6px' }}>
                                   {n.stock_symbol}
                                 </span>
                               )}
-                              <span className="text-[10px] font-mono text-text-muted">{timeAgo}</span>
-                              {!n.is_read && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue shrink-0" style={{ background: '#3B82F6' }} />}
+                              <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: '#4A5568' }}>{timeAgo}</span>
+                              {!n.is_read && (
+                                <span style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: '50%', background: '#F97316', flexShrink: 0, display: 'inline-block' }} />
+                              )}
                             </div>
                           </div>
                         </button>
@@ -405,36 +437,62 @@ export default function Header() {
                   </div>
                 )}
 
-                {/* ── LIVE TAB (existing Zustand alerts, untouched) ── */}
-                {notifTab === 'live' && (
-                  <div className="max-h-72 overflow-y-auto">
-                    {alerts.length === 0
-                      ? <div className="px-3 py-8 text-center text-[11px] font-mono text-text-muted">No live alerts yet</div>
-                      : alerts.slice(0, 10).map(a => (
-                        <button key={a.id} onClick={() => markAlertRead(a.id)}
-                          className={`w-full text-left px-3 py-2.5 border-b border-border-primary/40 hover:bg-bg-hover transition-colors flex items-start gap-2.5 ${!a.read ? 'bg-blue/5' : ''}`}
+                {/* ── INBOX TAB (Admin manual notifications — type='admin') ── */}
+                {notifTab === 'inbox' && (
+                  <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+                    {isGuest ? (
+                      <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 12, fontFamily: 'var(--font-mono)', color: '#6B7A90' }}>Sign in to see notifications</div>
+                    ) : inboxNotifs.length === 0 ? (
+                      <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 12, fontFamily: 'var(--font-mono)', color: '#6B7A90' }}>No messages yet</div>
+                    ) : inboxNotifs.map(n => {
+                      const timeAgo = (() => {
+                        const diff = Date.now() - new Date(n.created_at).getTime()
+                        const m = Math.floor(diff / 60000)
+                        if (m < 1)  return 'just now'
+                        if (m < 60) return `${m}m ago`
+                        const h = Math.floor(m / 60)
+                        if (h < 24) return `${h}h ago`
+                        return `${Math.floor(h / 24)}d ago`
+                      })()
+
+                      return (
+                        <button
+                          key={n.id}
+                          onClick={() => markDbRead(n.id)}
+                          style={{
+                            width: '100%', textAlign: 'left',
+                            padding: '12px 14px',
+                            borderBottom: '1px solid #1E2A3B',
+                            background: !n.is_read ? 'rgba(59,130,246,0.04)' : 'transparent',
+                            display: 'flex', alignItems: 'flex-start', gap: 10,
+                            cursor: 'pointer',
+                            transition: 'background 0.15s',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = !n.is_read ? 'rgba(59,130,246,0.04)' : 'transparent')}
                         >
-                          <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${a.impact === 'high' ? 'bg-red' : a.impact === 'medium' ? 'bg-yellow' : 'bg-text-muted'}`} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[12px] font-medium text-text-primary truncate">{a.title}</p>
-                            <p className="text-[10px] font-mono text-text-muted mt-0.5 line-clamp-2">{a.message}</p>
+                          <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1, lineHeight: 1 }}>📣</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontSize: 12, color: '#C9D1D9', lineHeight: 1.5, marginBottom: 5, wordBreak: 'break-word' }}>{n.message}</p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: '#4A5568' }}>{timeAgo}</span>
+                              {!n.is_read && (
+                                <span style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: '50%', background: '#3B82F6', flexShrink: 0, display: 'inline-block' }} />
+                              )}
+                            </div>
                           </div>
                         </button>
-                      ))
-                    }
+                      )
+                    })}
                   </div>
                 )}
+
+                {/* Footer padding */}
+                <div style={{ height: 6 }} />
 
               </div>
             )}
           </div>
-
-          <button
-            onClick={() => router.push('/dashboard?view=bookmarks')}
-            className="hidden sm:block h-8 px-3 text-[11px] font-mono text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors"
-          >
-            SAVED
-          </button>
 
           <div className="w-px h-5 bg-border-primary mx-1" />
 
@@ -468,19 +526,66 @@ export default function Header() {
             )}
 
             {showUserMenu && userName && (
-              <div className="absolute right-0 top-full mt-1 w-48 bg-bg-secondary border border-border-secondary rounded-lg z-50 animate-fade shadow-2xl overflow-hidden">
-                <div className="px-4 py-3 border-b border-border-primary">
-                  <p className="text-[12px] text-text-primary font-medium truncate">Hi, {userName}</p>
+              <div
+                className="absolute right-0 top-full z-50 animate-fade"
+                style={{
+                  marginTop: 6,
+                  width: 200,
+                  background: '#121A2B',
+                  border: '1px solid #1E2A3B',
+                  borderRadius: 10,
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                  overflow: 'hidden',
+                }}
+              >
+                {/* Avatar + name row */}
+                <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid #1E2A3B', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span
+                    style={{
+                      flexShrink: 0,
+                      width: 32, height: 32,
+                      borderRadius: '50%',
+                      background: '#1E2E4A',
+                      border: '1px solid #263042',
+                      color: '#3B82F6',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    {userName.charAt(0).toUpperCase()}
+                  </span>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#E6EDF3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {userName}
+                    </p>
+                    <p style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: '#4A5568', marginTop: 1 }}>Admin</p>
+                  </div>
                 </div>
-                <button
-                  onClick={handleLogout}
-                  className="w-full text-left px-4 py-2.5 text-[12px] font-mono text-text-muted hover:text-red hover:bg-bg-hover transition-colors flex items-center gap-2"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-                  </svg>
-                  Sign Out
-                </button>
+
+                {/* Sign out */}
+                <div style={{ padding: '6px' }}>
+                  <button
+                    onClick={handleLogout}
+                    style={{
+                      width: '100%', textAlign: 'left',
+                      padding: '9px 12px',
+                      borderRadius: 6,
+                      fontSize: 12, fontFamily: 'var(--font-mono)',
+                      color: '#6B7A90',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(244,63,94,0.08)'; e.currentTarget.style.color = '#F43F5E' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#6B7A90' }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                    Sign Out
+                  </button>
+                </div>
               </div>
             )}
           </div>

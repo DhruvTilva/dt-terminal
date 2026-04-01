@@ -9,13 +9,21 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ notifications: [] })
 
-  // Fetch user-specific + global notifications
+  // Compute start of today in IST (UTC+5:30)
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+  const nowUtc = Date.now()
+  const istNow = new Date(nowUtc + IST_OFFSET_MS)
+  const istMidnight = new Date(Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate()))
+  const startOfDayUtc = new Date(istMidnight.getTime() - IST_OFFSET_MS).toISOString()
+
+  // Fetch user-specific + global notifications — today only (IST), newest first, max 15
   const { data: notifications, error } = await supabase
     .from('notifications')
     .select('id, user_id, stock_symbol, message, type, category, is_read, created_at')
     .or(`user_id.eq.${user.id},user_id.is.null`)
+    .gte('created_at', startOfDayUtc)
     .order('created_at', { ascending: false })
-    .limit(30)
+    .limit(15)
 
   if (error || !notifications) {
     return NextResponse.json({ notifications: [] })

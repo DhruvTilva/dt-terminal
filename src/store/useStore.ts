@@ -1,7 +1,7 @@
 'use client'
 
 import { create } from 'zustand'
-import type { Stock, IndexData, NewsItem, Opportunity, Alert, WatchlistItem, BookmarkItem } from '@/types'
+import type { Stock, IndexData, NewsItem, Opportunity, Alert, WatchlistItem } from '@/types'
 
 interface AppState {
   // Market data
@@ -13,7 +13,6 @@ interface AppState {
 
   // User data
   watchlist: WatchlistItem[]
-  bookmarks: BookmarkItem[]
 
   // UI state
   theme: 'light' | 'dark'
@@ -38,9 +37,6 @@ interface AppState {
   setWatchlist: (watchlist: WatchlistItem[]) => void
   addToWatchlist: (item: WatchlistItem) => void
   removeFromWatchlist: (symbol: string) => void
-  setBookmarks: (bookmarks: BookmarkItem[]) => void
-  addBookmark: (bookmark: BookmarkItem) => void
-  removeBookmark: (newsId: string) => void
   toggleTheme: () => void
   setLoading: (loading: boolean) => void
   setRefreshing: (v: boolean) => void
@@ -59,7 +55,6 @@ export const useStore = create<AppState>((set) => ({
   opportunities: [],
   alerts: [],
   watchlist: [],
-  bookmarks: [],
   theme: 'dark',
   isLoading: true,
   isRefreshing: false,
@@ -75,9 +70,11 @@ export const useStore = create<AppState>((set) => ({
   setNews: (news) => set({ news }),
   setOpportunities: (opportunities) => set({ opportunities }),
 
-  addAlert: (alert) => set((state) => ({
-    alerts: [alert, ...state.alerts].slice(0, 50),
-  })),
+  addAlert: (alert) => set((state) => {
+    // Deduplicate by ID — prevents same opportunity alert re-added every 60s refresh
+    if (state.alerts.some(a => a.id === alert.id)) return state
+    return { alerts: [alert, ...state.alerts].slice(0, 50) }
+  }),
   markAlertRead: (id) => set((state) => ({
     alerts: state.alerts.map(a => a.id === id ? { ...a, read: true } : a),
   })),
@@ -90,14 +87,6 @@ export const useStore = create<AppState>((set) => ({
   })),
   removeFromWatchlist: (symbol) => set((state) => ({
     watchlist: state.watchlist.filter(w => w.symbol !== symbol),
-  })),
-
-  setBookmarks: (bookmarks) => set({ bookmarks }),
-  addBookmark: (bookmark) => set((state) => ({
-    bookmarks: [bookmark, ...state.bookmarks],
-  })),
-  removeBookmark: (newsId) => set((state) => ({
-    bookmarks: state.bookmarks.filter(b => b.newsId !== newsId),
   })),
 
   toggleTheme: () => set((state) => {
