@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 
+type NotifRow = {
+  id: string
+  user_id: string | null
+  stock_symbol: string | null
+  message: string
+  type: string
+  category: string | null
+  is_read: boolean
+  created_at: string
+}
+
 // GET /api/notifications
-// Returns up to 30 notifications for the current user (own + global)
+// Returns up to 15 notifications for the current user (own + global), today only (IST)
 // Computes is_read for global ones via notification_reads table
 export async function GET() {
   const supabase = await createServerClient()
@@ -29,10 +40,12 @@ export async function GET() {
     return NextResponse.json({ notifications: [] })
   }
 
+  const rows = notifications as NotifRow[]
+
   // For global notifications, check which ones this user has already read
-  const globalIds = notifications
-    .filter(n => n.user_id === null)
-    .map(n => n.id)
+  const globalIds = rows
+    .filter((n: NotifRow) => n.user_id === null)
+    .map((n: NotifRow) => n.id)
 
   const readSet = new Set<string>()
   if (globalIds.length > 0) {
@@ -41,11 +54,11 @@ export async function GET() {
       .select('notification_id')
       .eq('user_id', user.id)
       .in('notification_id', globalIds)
-    reads?.forEach(r => readSet.add(r.notification_id))
+    ;(reads as { notification_id: string }[] | null)?.forEach(r => readSet.add(r.notification_id))
   }
 
   // Merge is_read: use notification_reads for global, is_read column for user-specific
-  const result = notifications.map(n => ({
+  const result = rows.map((n: NotifRow) => ({
     ...n,
     is_read: n.user_id === null ? readSet.has(n.id) : n.is_read,
   }))
@@ -83,7 +96,7 @@ export async function PATCH(request: NextRequest) {
       await supabase
         .from('notification_reads')
         .upsert(
-          globals.map(n => ({ notification_id: n.id, user_id: user.id })),
+          (globals as { id: string }[]).map(n => ({ notification_id: n.id, user_id: user.id })),
           { onConflict: 'notification_id,user_id', ignoreDuplicates: true }
         )
     }
