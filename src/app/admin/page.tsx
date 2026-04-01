@@ -17,10 +17,11 @@ type Analytics = {
   total: number
   today: number
   activeNow: number
-  mobilePct:  number | null
-  topBrowser: string | null
-  topCountry: string | null
-  topPage:    string | null
+  mobilePct:    number | null
+  topBrowser:   string | null
+  topCountry:   string | null
+  topPage:      string | null
+  storageBytes: number
 }
 
 function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
@@ -196,8 +197,15 @@ export default function AdminPage() {
     )
   }
 
+  function formatBytes(bytes: number): string {
+    if (bytes <= 0) return '—'
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+  }
+
   return (
-    <div style={{ minHeight: '100vh', background: '#0B1220', fontFamily: 'var(--font-sans)', color: '#E6EDF3' }}>
+    <div style={{ height: '100%', overflowY: 'auto', background: '#0B1220', fontFamily: 'var(--font-sans)', color: '#E6EDF3' }}>
 
       {/* Header */}
       <div style={{ background: '#121A2B', borderBottom: '1px solid #263042', padding: '0 24px', height: 48, display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -235,28 +243,35 @@ export default function AdminPage() {
           {/* Breakdown row */}
           {!analyticsLoading && analytics && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-              {[
-                { label: 'Mobile', value: analytics.mobilePct !== null ? `${analytics.mobilePct}%` : '—', icon: '📱' },
-                { label: 'Browser', value: analytics.topBrowser ?? '—', icon: '🌐' },
-                { label: 'Country', value: analytics.topCountry ?? '—', icon: '🌍' },
-                { label: 'Top Page', value: analytics.topPage ?? '—', icon: '📄' },
-              ].map(item => (
-                <div key={item.label} style={{
-                  background: '#0B1220', border: '1px solid #263042',
-                  borderRadius: 6, padding: '7px 12px',
-                  display: 'flex', alignItems: 'center', gap: 7, flex: 1, minWidth: 120,
-                }}>
-                  <span style={{ fontSize: 13 }}>{item.icon}</span>
-                  <div>
-                    <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#354558', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                      {item.label}
-                    </div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#9FB0C0', fontFamily: 'var(--font-mono)', marginTop: 1 }}>
-                      {item.value}
-                    </div>
+              {/* Mobile */}
+              <div style={{
+                background: '#0B1220', border: '1px solid #263042',
+                borderRadius: 6, padding: '7px 12px',
+                display: 'flex', alignItems: 'center', gap: 7, minWidth: 120,
+              }}>
+                <span style={{ fontSize: 13 }}>📱</span>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#354558', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Mobile</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#9FB0C0', fontFamily: 'var(--font-mono)', marginTop: 1 }}>
+                    {analytics.mobilePct !== null ? `${analytics.mobilePct}%` : '—'}
                   </div>
                 </div>
-              ))}
+              </div>
+
+              {/* Storage used */}
+              <div style={{
+                background: '#0B1220', border: '1px solid #263042',
+                borderRadius: 6, padding: '7px 12px',
+                display: 'flex', alignItems: 'center', gap: 7, minWidth: 140,
+              }}>
+                <span style={{ fontSize: 13 }}>🗄️</span>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#354558', letterSpacing: '0.08em', textTransform: 'uppercase' }}>DB Storage</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#9FB0C0', fontFamily: 'var(--font-mono)', marginTop: 1 }}>
+                    {analytics.storageBytes > 0 ? formatBytes(analytics.storageBytes) : '—'}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

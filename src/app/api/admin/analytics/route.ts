@@ -63,6 +63,13 @@ export async function GET() {
   for (const r of rows) if (r.page_path) pageCount[r.page_path] = (pageCount[r.page_path] ?? 0) + 1
   const topPage = Object.entries(pageCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
 
+  // DB storage size via SQL function (graceful fallback if not created)
+  let storageBytes = 0
+  try {
+    const { data: sizeData } = await client.rpc('get_db_size_bytes')
+    if (typeof sizeData === 'number') storageBytes = sizeData
+  } catch { /* function not yet created */ }
+
   return NextResponse.json({
     total,
     today:     todayRes.count  ?? 0,
@@ -71,5 +78,6 @@ export async function GET() {
     topBrowser,
     topCountry,
     topPage,
+    storageBytes,
   })
 }
