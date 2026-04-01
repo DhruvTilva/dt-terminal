@@ -1,0 +1,19 @@
+{
+  "name": "DT's Terminal",
+  "short_name": "DT Terminal",
+  "description": "Free NSE/BSE Stock Scanner & AI Predictions for Indian traders",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0B1220",
+  "theme_color": "#0B1220",
+  "orientation": "portrait-primary",
+  "lang": "en-IN",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import { useStore } from '@/store/useStore'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { DbNotification } from '@/types'
+import PWAInstallButton from '@/components/PWAInstallButton'
 
 export default function Header() {
   const { indices, stocks, searchQuery, setSearchQuery, isRefreshing } = useStore()
@@ -300,6 +301,9 @@ export default function Header() {
 
         {/* Actions */}
         <div className="flex items-center gap-0.5 ml-1">
+          {/* PWA Install button — mobile only, hidden when already installed */}
+          <PWAInstallButton />
+
           {/* Alerts + Notifications */}
           <div className="relative flex items-center" ref={alertsRef}>
             <button
