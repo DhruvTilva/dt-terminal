@@ -64,11 +64,11 @@ jobs:
           password: ${{ secrets.MAIL_PASSWORD }}
           to: ${{ secrets.MAIL_USERNAME }}
           from: DT's Terminal <${{ secrets.MAIL_USERNAME }}>
-          subject: "✅ DT's Terminal — ML Predictions Ready (${{ steps.meta.outputs.run_date }})"
+          subject: "🔍 DT's Terminal — ML Predictions Ready (${{ steps.meta.outputs.run_date }})"
           body: |
             DT's Terminal — Nightly ML Trend Prediction
 
-            Status          : ✅ COMPLETED
+            Status          : 🧪 COMPLETED
             Run Date        : ${{ steps.meta.outputs.run_date }}
             Finished At     : ${{ steps.stats.outputs.end_time }}
             Trigger         : ${{ github.event_name == 'workflow_dispatch' && 'Manual' || 'Scheduled (8:00 PM IST)' }}
