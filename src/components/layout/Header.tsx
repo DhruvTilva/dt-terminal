@@ -220,55 +220,82 @@ export default function Header() {
           </button>
 
           {showMobileMenu && (
-            <div className="absolute right-0 top-full mt-1 w-44 bg-bg-secondary border border-border-secondary z-50 animate-fade shadow-2xl overflow-hidden rounded-lg">
-              <button
-                onClick={() => { router.push('/dashboard'); setShowMobileMenu(false) }}
-                className="w-full text-left px-4 py-3 text-[12px] font-mono transition-colors"
-                style={{
-                  color: pathname === '/dashboard' ? '#E6EDF3' : '#6B7A90',
-                  background: pathname === '/dashboard' ? 'rgba(59,130,246,0.06)' : 'transparent',
-                  borderLeft: pathname === '/dashboard' ? '2px solid #3B82F6' : '2px solid transparent',
-                }}
-              >
-                DASHBOARD
-              </button>
-              <button
-                onClick={() => {
-                  setShowMobileMenu(false)
-                  if (isGuest) {
-                    setShowTradeToast(true)
-                    setTimeout(() => setShowTradeToast(false), 2500)
-                    setTimeout(() => router.push('/login'), 800)
-                    return
-                  }
-                  router.push('/trade-finder')
-                }}
-                className="w-full text-left px-4 py-3 text-[12px] font-mono transition-colors flex items-center gap-2"
-                style={{
-                  color: isGuest ? 'rgba(107,122,144,0.65)' : pathname === '/trade-finder' ? '#E6EDF3' : '#6B7A90',
-                  background: (!isGuest && pathname === '/trade-finder') ? 'rgba(249,115,22,0.06)' : 'transparent',
-                  borderLeft: (!isGuest && pathname === '/trade-finder') ? '2px solid #F97316' : '2px solid transparent',
-                }}
-              >
-                TRADE FINDER
-                {isGuest && (
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                  </svg>
-                )}
-              </button>
-              <button
-                onClick={() => { router.push('/creator'); setShowMobileMenu(false) }}
-                className="w-full text-left px-4 py-3 text-[12px] font-mono transition-colors"
-                style={{
-                  color: pathname === '/creator' ? '#E6EDF3' : '#6B7A90',
-                  background: pathname === '/creator' ? 'rgba(139,92,246,0.06)' : 'transparent',
-                  borderLeft: pathname === '/creator' ? '2px solid #8B5CF6' : '2px solid transparent',
-                }}
-              >
-                CREATOR
-              </button>
+            <div
+              className="absolute right-0 top-full z-50 animate-fade overflow-hidden"
+              style={{
+                marginTop: 6,
+                width: 192,
+                background: '#121A2B',
+                border: '1px solid #1E2A3B',
+                borderRadius: 10,
+                boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              }}
+            >
+              {/* Nav items */}
+              <div style={{ padding: '6px 0' }}>
+                <button
+                  onClick={() => { router.push('/dashboard'); setShowMobileMenu(false) }}
+                  className="w-full text-left text-[12px] font-mono transition-colors"
+                  style={{
+                    padding: '10px 16px',
+                    color: pathname === '/dashboard' ? '#E6EDF3' : '#9FB0C0',
+                    background: pathname === '/dashboard' ? 'rgba(59,130,246,0.08)' : 'transparent',
+                    borderLeft: pathname === '/dashboard' ? '2px solid #3B82F6' : '2px solid transparent',
+                    display: 'block',
+                  }}
+                >
+                  DASHBOARD
+                </button>
+                <button
+                  onClick={() => {
+                    setShowMobileMenu(false)
+                    if (isGuest) {
+                      setShowTradeToast(true)
+                      setTimeout(() => setShowTradeToast(false), 2500)
+                      setTimeout(() => router.push('/login'), 800)
+                      return
+                    }
+                    router.push('/trade-finder')
+                  }}
+                  className="w-full text-left text-[12px] font-mono transition-colors"
+                  style={{
+                    padding: '10px 16px',
+                    color: isGuest ? 'rgba(159,176,192,0.45)' : pathname === '/trade-finder' ? '#E6EDF3' : '#9FB0C0',
+                    background: (!isGuest && pathname === '/trade-finder') ? 'rgba(249,115,22,0.08)' : 'transparent',
+                    borderLeft: (!isGuest && pathname === '/trade-finder') ? '2px solid #F97316' : '2px solid transparent',
+                    display: 'flex', alignItems: 'center', gap: 7,
+                  }}
+                >
+                  TRADE FINDER
+                  {isGuest && (
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5, flexShrink: 0 }}>
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                  )}
+                </button>
+                <button
+                  onClick={() => { router.push('/creator'); setShowMobileMenu(false) }}
+                  className="w-full text-left text-[12px] font-mono transition-colors"
+                  style={{
+                    padding: '10px 16px',
+                    color: pathname === '/creator' ? '#E6EDF3' : '#9FB0C0',
+                    background: pathname === '/creator' ? 'rgba(139,92,246,0.08)' : 'transparent',
+                    borderLeft: pathname === '/creator' ? '2px solid #8B5CF6' : '2px solid transparent',
+                    display: 'block',
+                  }}
+                >
+                  CREATOR
+                </button>
+              </div>
+
+              {/* Divider */}
+              <div style={{ height: 1, background: '#1E2A3B', margin: '0 12px' }} />
+
+              {/* Download App */}
+              <div style={{ padding: '6px 0' }}>
+                <PWAInstallButton variant="menuItem" onClose={() => setShowMobileMenu(false)} />
+              </div>
             </div>
           )}
         </div>

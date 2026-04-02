@@ -12,7 +12,7 @@ declare global {
   interface Navigator { standalone?: boolean }
 }
 
-export default function PWAInstallButton() {
+export default function PWAInstallButton({ variant = 'icon', onClose }: { variant?: 'icon' | 'menuItem'; onClose?: () => void } = {}) {
   const [show, setShow]               = useState(false)
   const [isIOS, setIsIOS]             = useState(false)
   const [showIOSModal, setShowIOSModal] = useState(false)
@@ -91,6 +91,7 @@ export default function PWAInstallButton() {
   }, [showToast])
 
   const handleClick = async () => {
+    onClose?.()
     if (isIOS) {
       setShowIOSModal(true)
       return
@@ -110,20 +111,35 @@ export default function PWAInstallButton() {
 
   return (
     <>
-      {/* Install icon button */}
-      <button
-        onClick={handleClick}
-        title="Install App"
-        aria-label="Install DT's Terminal"
-        className="flex items-center justify-center w-8 h-8 transition-colors hover:bg-bg-hover rounded"
-        style={{ color: '#6B7A90', flexShrink: 0 }}
-      >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-      </button>
+      {/* Install button — icon or menu item */}
+      {variant === 'menuItem' ? (
+        <button
+          onClick={handleClick}
+          className="w-full text-left text-[12px] font-mono transition-colors flex items-center gap-2"
+          style={{ padding: '10px 16px', color: '#9FB0C0', background: 'transparent', borderLeft: '2px solid transparent' }}
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          DOWNLOAD APP
+        </button>
+      ) : (
+        <button
+          onClick={handleClick}
+          title="Install App"
+          aria-label="Install DT's Terminal"
+          className="flex items-center justify-center w-8 h-8 transition-colors hover:bg-bg-hover rounded"
+          style={{ color: '#6B7A90', flexShrink: 0 }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+        </button>
+      )}
 
       {/* iOS instruction modal */}
       {showIOSModal && (
