@@ -202,7 +202,7 @@ def grade_yesterday_predictions():
 
     # Grade each prediction
     correct = 0
-    updates = []
+    graded = 0
     for p in preds:
         sym = p["stock_symbol"]
         if sym not in actuals:
@@ -210,30 +210,32 @@ def grade_yesterday_predictions():
         actual_change = actuals[sym]
         actual_dir = "bullish" if actual_change > 0 else "bearish"
         was_correct = (actual_dir == p["predicted_direction"])
-        updates.append({
-            "prediction_date": yesterday,
-            "stock_symbol": sym,
-            "predicted_direction": p["predicted_direction"],
-            "was_correct": was_correct,
-            "actual_direction": actual_dir,
-        })
-        if was_correct:
-            correct += 1
 
-    if not updates:
+        # Use UPDATE (not upsert) — only updates existing rows, never inserts.
+        # This avoids NOT NULL constraint errors on confidence/model_accuracy
+        # when a symbol exists in trade_finder_results but not in ml_predictions.
+        try:
+            supabase.table("ml_predictions") \
+                .update({
+                    "was_correct": was_correct,
+                    "actual_direction": actual_dir,
+                }) \
+                .eq("prediction_date", yesterday) \
+                .eq("stock_symbol", sym) \
+                .execute()
+            graded += 1
+            if was_correct:
+                correct += 1
+        except Exception as e:
+            print(f"  Warning: could not grade {sym} ({yesterday}): {e}")
+            continue
+
+    if graded == 0:
         print("No symbols matched for grading.")
         return
 
-    # Upsert grades back
-    batch_size = 500
-    for i in range(0, len(updates), batch_size):
-        supabase.table("ml_predictions").upsert(
-            updates[i : i + batch_size],
-            on_conflict="prediction_date,stock_symbol"
-        ).execute()
-
-    accuracy = round(correct / len(updates) * 100, 1)
-    print(f"Graded {yesterday}: {correct}/{len(updates)} correct = {accuracy}%")
+    accuracy = round(correct / graded * 100, 1)
+    print(f"Graded {yesterday}: {correct}/{graded} correct = {accuracy}%")
 
 
 # ── Save predictions ──────────────────────────────────────────────────────────
