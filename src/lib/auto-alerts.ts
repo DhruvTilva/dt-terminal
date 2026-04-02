@@ -24,7 +24,7 @@ const P_FII_ACTIVITY   = /fii (heavy|large|massive|record|significant)|dii (heav
 const P_WEAK_FUNDS     = /heavy loss|net loss (?:widen|increas|jump)|continuous loss|insolvency|npa (?:rise|increas)|debt default|financial stress/i
 
 // ── Deduplication window (hours) ─────────────────────────────────────────
-const DEDUP_HOURS = 4
+const DEDUP_HOURS = 12  // 12h prevents same alert repeating in the same trading day
 
 /**
  * Main entry point.
