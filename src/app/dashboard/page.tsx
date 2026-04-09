@@ -133,7 +133,7 @@ export default function DashboardPage() {
           >
             <div
               className="w-64 h-full flex flex-col"
-              style={{ background: '#121A2B', borderRight: '1px solid #263042' }}
+              style={{ background: '#121A2B', borderRight: '1px solid #263042', paddingTop: 72 }}
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between px-4 h-10 shrink-0" style={{ borderBottom: '1px solid #263042' }}>

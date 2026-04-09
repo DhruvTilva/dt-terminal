@@ -9,12 +9,18 @@ const FEATURES = [
     icon: '⚡',
     label: 'Trade Finder',
     desc: 'Smart latest opportunities across 7000+ stocks',
+    highlight: true,
+  },
+  {
+    icon: '📊',
+    label: 'Long-Term Engine',
+    desc: 'Deep stock analysis like mutual fund managers — fundamentals, risk & future growth insights',
+    highlight: true,
   },
   {
     icon: '🤖',
     label: 'AI Prediction',
     desc: 'Nightly ML predicts next-day direction with confidence score',
-    highlight: true,
   },
   {
     icon: '📌',
@@ -33,22 +39,33 @@ export default function GuestLoginPopup() {
   const router = useRouter()
 
   useEffect(() => {
-    // Already shown this session — never show again
-    if (sessionStorage.getItem('popup_shown') === 'true') return
+    const supabase = createClient()
 
     let timer: ReturnType<typeof setTimeout>
 
-    const supabase = createClient()
-    supabase.auth.getUser().then(({ data }: { data: { user: { id: string } | null } }) => {
-      if (data.user) return // Logged in, skip entirely
-
-      // Guest user: start 60s countdown
+    const startTimer = (delay: number) => {
       timer = setTimeout(() => {
-        // Re-check in case user logged in during the wait
-        if (sessionStorage.getItem('popup_shown') !== 'true') {
+        const attempts = Number(sessionStorage.getItem('popup_attempts') || '0')
+        const done = sessionStorage.getItem('popup_done') === 'true'
+
+        if (!done && attempts < 2) {
           setShow(true)
         }
-      }, 60000)
+      }, delay)
+    }
+
+    supabase.auth.getUser().then(({ data }: { data: { user: { id: string } | null } }) => {
+      if (data.user) {
+        sessionStorage.setItem('popup_done', 'true')
+        return
+      }
+
+      const done = sessionStorage.getItem('popup_done') === 'true'
+      const attempts = Number(sessionStorage.getItem('popup_attempts') || '0')
+
+      if (done || attempts >= 2) return
+
+      startTimer(60000)
     })
 
     return () => {
@@ -56,13 +73,28 @@ export default function GuestLoginPopup() {
     }
   }, [])
 
+
   const dismiss = () => {
     setShow(false)
-    sessionStorage.setItem('popup_shown', 'true')
+
+    let attempts = Number(sessionStorage.getItem('popup_attempts') || '0')
+    attempts += 1
+
+    sessionStorage.setItem('popup_attempts', String(attempts))
+
+    if (attempts >= 2) {
+      sessionStorage.setItem('popup_done', 'true')
+    } else {
+      // schedule second popup after 60 sec
+      setTimeout(() => {
+        const done = sessionStorage.getItem('popup_done') === 'true'
+        if (!done) setShow(true)
+      }, 60000)
+    }
   }
 
   const handleLogin = () => {
-    sessionStorage.setItem('popup_shown', 'true')
+    sessionStorage.setItem('popup_done', 'true')
     router.push('/login')
   }
 
@@ -138,7 +170,7 @@ export default function GuestLoginPopup() {
               fontFamily: 'var(--font-sans)',
             }}
           >
-            Unlock Full Trading Power
+            Unlock Full Power
           </h2>
 
           {/* Subtitle */}
@@ -152,7 +184,7 @@ export default function GuestLoginPopup() {
               fontFamily: 'var(--font-sans)',
             }}
           >
-            Login to access powerful features<br />designed for serious traders
+            Login to access powerful features<br />
           </p>
 
           {/* Feature list */}

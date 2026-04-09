@@ -58,7 +58,7 @@ export default function WatchlistPanel() {
               }))
             )
           }
-        } catch {}
+        } catch { }
       }
       setLoadingWatchlist(false)
     }
@@ -87,7 +87,7 @@ export default function WatchlistPanel() {
         })
         setLocalPrices(map)
       }
-    } catch {}
+    } catch { }
   }, [watchlist, stocks])
 
   useEffect(() => {
@@ -159,7 +159,7 @@ export default function WatchlistPanel() {
         setAddedSymbol(symbol)
         setTimeout(() => setAddedSymbol(null), 2000)
       }
-    } catch {}
+    } catch { }
     setShowAdd(false)
     setSearch('')
     setResults([])
@@ -169,7 +169,7 @@ export default function WatchlistPanel() {
     removeFromWatchlist(symbol) // optimistic
     try {
       await fetch(`/api/watchlist?symbol=${symbol}`, { method: 'DELETE' })
-    } catch {}
+    } catch { }
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -194,7 +194,7 @@ export default function WatchlistPanel() {
       {/* Add Stock button */}
       <button
         onClick={handleAddClick}
-        className="shrink-0 flex items-center justify-center gap-1.5 transition-colors"
+        className="shrink-0 w-full flex items-center justify-center gap-1.5 px-4 transition-colors"
         style={{
           height: 38,
           fontSize: 12,
@@ -454,8 +454,8 @@ export default function WatchlistPanel() {
                       background: isGainer
                         ? '#22C55E'
                         : isLoser
-                        ? '#F43F5E'
-                        : '#354558',
+                          ? '#F43F5E'
+                          : '#354558',
                     }}
                   />
                   <div className="min-w-0">
@@ -515,8 +515,8 @@ export default function WatchlistPanel() {
                             color: isGainer
                               ? '#22C55E'
                               : isLoser
-                              ? '#F43F5E'
-                              : '#6B7A90',
+                                ? '#F43F5E'
+                                : '#6B7A90',
                           }}
                         >
                           {isGainer ? '+' : ''}

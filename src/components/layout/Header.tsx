@@ -126,6 +126,16 @@ export default function Header() {
     router.push('/trade-finder')
   }
 
+  const handleLongTermEngineClick = () => {
+    if (isGuest) {
+      setShowTradeToast(true)
+      setTimeout(() => setShowTradeToast(false), 2500)
+      setTimeout(() => router.push('/login'), 800)
+      return
+    }
+    router.push('/long-term')
+  }
+
   const handleLogout = async () => {
     setShowUserMenu(false)
     try { const s = createClient(); await s.auth.signOut() } catch {}
@@ -203,6 +213,26 @@ export default function Header() {
               </svg>
             )}
           </button>
+          <button
+            onClick={handleLongTermEngineClick}
+            className="h-8 px-4 text-[11px] font-mono transition-colors flex items-center gap-1.5"
+            style={{
+              color: isGuest
+                ? 'rgba(107,122,144,0.65)'
+                : pathname === '/long-term' ? '#E6EDF3' : '#6B7A90',
+              borderBottom: (!isGuest && pathname === '/long-term') ? '2px solid #3B82F6' : '2px solid transparent',
+              background: 'transparent',
+              opacity: isGuest ? 0.75 : 1,
+            }}
+          >
+            LONG-TERM ENGINE
+            {isGuest && (
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            )}
+          </button>
         </div>
 
         <div className="flex-1" />
@@ -267,6 +297,34 @@ export default function Header() {
                   }}
                 >
                   TRADE FINDER
+                  {isGuest && (
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5, flexShrink: 0 }}>
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowMobileMenu(false)
+                    if (isGuest) {
+                      setShowTradeToast(true)
+                      setTimeout(() => setShowTradeToast(false), 2500)
+                      setTimeout(() => router.push('/login'), 800)
+                      return
+                    }
+                    router.push('/long-term')
+                  }}
+                  className="w-full text-left text-[12px] font-mono transition-colors"
+                  style={{
+                    padding: '10px 16px',
+                    color: isGuest ? 'rgba(159,176,192,0.45)' : pathname === '/long-term' ? '#E6EDF3' : '#9FB0C0',
+                    background: (!isGuest && pathname === '/long-term') ? 'rgba(59,130,246,0.08)' : 'transparent',
+                    borderLeft: (!isGuest && pathname === '/long-term') ? '2px solid #3B82F6' : '2px solid transparent',
+                    display: 'flex', alignItems: 'center', gap: 7,
+                  }}
+                >
+                  LONG-TERM ENGINE
                   {isGuest && (
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5, flexShrink: 0 }}>
                       <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
@@ -644,7 +702,7 @@ export default function Header() {
               <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
             <p style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: '#F97316', lineHeight: 1.4 }}>
-              Login required to access Trade Finder
+              Login required to access this premium engine
             </p>
           </div>
         </div>
