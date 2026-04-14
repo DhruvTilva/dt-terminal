@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
   title: "DT's Terminal — Free NSE/BSE Stock Scanner & AI Predictions",
@@ -12,6 +14,10 @@ export const metadata: Metadata = {
 }
 
 export default function HomePage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) redirect('/dashboard')
+
   return (
     <div className="min-h-screen bg-bg-primary flex flex-col overflow-x-hidden" style={{ fontFamily: 'var(--font-sans)' }}>
 
